@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["bryant <bryant@defrag.in>"]
 
 [dependencies]
-blake2 = { git = "https://github.com/ebfe/rust-blake2" }
+rust-blake2 = { git = "https://github.com/ebfe/rust-blake2" }
