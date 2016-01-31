@@ -94,40 +94,6 @@ pub struct Argon2 {
     variant: Argon2Variant,
 }
 
-#[cfg_attr(rustfmt, rustfmt_skip)]
-fn new_() {
-/*
-    (args: Argon2Params, p: &[u8], s: &[u8], k: &[u8], x: &[u8])
-                -> Argon2 {
-
-pub struct Argon2Params {
-    pub parallelism: u32, // 1..1 << 24 - 1
-    pub memory_kib: u32, // >= 8 * parallelism
-    pub passes: u32,
-    pub hash_length: u32, // >= 4
-    pub variant: Argon2Variant,
-}
-
-    let lanelen = args.memory_kib / (4 * args.parallelism) * 4;
-    Argon2 {
-        h0: h0(args.parallelism,
-               args.hash_length,
-               args.memory_kib,
-               args.passes,
-               ARGON2_VERSION,
-               args.variant,
-               p,
-               s,
-               k,
-               x),
-        blocks: (0..lanelen * args.parallelism).map(|_| zero()).collect(),
-        passes: args.passes,
-        lanelen: lanelen,
-        lanes: args.parallelism,
-    }
-    */
-}
-
 impl Argon2 {
     pub fn new(passes: u32, lanes: u32, memory_kib: u32, variant: Argon2Variant)
                -> Argon2 {
