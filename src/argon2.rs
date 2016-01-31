@@ -270,22 +270,12 @@ pub fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
                    slicelen: u32, j1: u32, j2: u32)
                    -> u32 {
     let lanelen = slicelen * 4;
-    let r: u32 = if pass == 0 {
-        if slice == 0 {
-            sliceidx - 1
-        } else {
-            if j2 % lanes == lane {
-                slice * slicelen + sliceidx - 1
-            } else {
-                slice * slicelen - if sliceidx == 0 { 1 } else { 0 }
-            }
-        }
-    } else {
-        if j2 % lanes == lane {
-            lanelen - slicelen + sliceidx - 1
-        } else {
-            lanelen - slicelen - if sliceidx == 0 { 1 } else { 0 }
-        }
+    let r: u32 = match (pass, slice, j2 % lanes == lane) {
+        (0, 0, _) => sliceidx - 1,
+        (0, _, false) => slice * slicelen - if sliceidx == 0 { 1 } else { 0 },
+        (0, _, true) => slice * slicelen + sliceidx - 1,
+        (_, _, false) => lanelen - slicelen - if sliceidx == 0 { 1 } else { 0 },
+        (_, _, true) => lanelen - slicelen + sliceidx - 1,
     };
 
     let relpos = {
