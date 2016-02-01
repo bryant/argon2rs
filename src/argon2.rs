@@ -37,7 +37,7 @@ pub fn xor_all(blocks: &Vec<&Block>) -> Block {
     rv
 }
 
-pub fn as32le(k: u32) -> [u8; 4] { let z = k.to_le(); [(z & 0xff) as u8, (z >> 8 & 0xff) as u8, (z >> 16 & 0xff) as u8, (z >> 24 & 0xff) as u8] }//{ unsafe { mem::transmute(k.to_le()) } }
+pub fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
 
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
 
@@ -54,7 +54,7 @@ fn as_u8(b: &Block) -> &[u8] {
 macro_rules! b2hash {
     ($($bytes: expr),*) => {
         {
-            let mut out: [u8; DEF_B2HASH_LEN] = [0; DEF_B2HASH_LEN];  //unsafe { mem::uninitialized() };
+            let mut out: [u8; DEF_B2HASH_LEN] = unsafe { mem::uninitialized() };
             b2hash!(&mut out; $($bytes),*);
             out
         }
