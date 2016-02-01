@@ -288,22 +288,14 @@ pub struct IndexGen {
 }
 
 impl IndexGen {
+    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn new(pass: u32, lane: u32, slice: u32, totblocks: u32, totpasses: u32)
                -> IndexGen {
-        let args = [pass as u64,
-                    lane as u64,
-                    slice as u64,
-                    totblocks as u64,
-                    totpasses as u64,
-                    Argon2Variant::Argon2i as u64];
-        let mut rv = IndexGen {
-            arg: zero(),
-            pseudos: zero(),
-            idx: 0,
-        };
-
+        let mut rv = IndexGen { arg: zero(), pseudos: zero(), idx: 0 };
+        let args = [pass, lane, slice, totblocks, totpasses,
+                    Argon2Variant::Argon2i as u32];
         for (k, v) in rv.arg.iter_mut().zip(args.into_iter()) {
-            *k = *v;
+            *k = *v as u64;
         }
         rv.more();
         rv
