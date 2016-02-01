@@ -5,7 +5,7 @@ use self::blake2::Blake2b;
 use std::iter::FromIterator;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub enum Argon2Variant {
+pub enum Variant {
     Argon2d = 0,
     Argon2i = 1,
 }
@@ -73,7 +73,7 @@ macro_rules! b2hash {
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
-      variant: Argon2Variant, p: &[u8], s: &[u8], k: &[u8], x: &[u8])
+      variant: Variant, p: &[u8], s: &[u8], k: &[u8], x: &[u8])
       -> [u8; 72] {
     let mut rv = [0 as u8; 72];
     b2hash!(&mut rv[0..DEF_B2HASH_LEN];
@@ -92,11 +92,11 @@ pub struct Argon2 {
     lanelen: u32,
     lanes: u32,
     origkib: u32,
-    variant: Argon2Variant,
+    variant: Variant,
 }
 
 impl Argon2 {
-    pub fn new(passes: u32, lanes: u32, memory_kib: u32, variant: Argon2Variant)
+    pub fn new(passes: u32, lanes: u32, memory_kib: u32, variant: Variant)
                -> Argon2 {
         assert!(lanes >= 1 && memory_kib >= 8 * lanes && passes >= 1);
         let lanelen = memory_kib / (4 * lanes) * 4;
@@ -178,7 +178,7 @@ impl Argon2 {
         let slicelen = self.lanelen / SLICES_PER_LANE;
 
         for idx in offset..slicelen {
-            let (j1, j2) = if self.variant == Argon2Variant::Argon2i {
+            let (j1, j2) = if self.variant == Variant::Argon2i {
                 jgen.nextj()
             } else {
                 let i = self.prev(self.blkidx(lane, slice * slicelen + idx));
@@ -276,7 +276,7 @@ impl Gen2i {
            -> Gen2i {
         let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
         let args = [pass, lane, slice, totblocks, totpasses,
-                    Argon2Variant::Argon2i as u32];
+                    Variant::Argon2i as u32];
         for (k, v) in rv.arg.iter_mut().zip(args.into_iter()) {
             *k = *v as u64;
         }
@@ -509,7 +509,7 @@ mod kat_tests {
         rv + &u8info("Tag", &out, false)
     }
 
-    fn compare_kats(fexpected: &str, variant: a2::Argon2Variant) {
+    fn compare_kats(fexpected: &str, variant: a2::Variant) {
         let mut f = File::open(fexpected).unwrap();
         let mut expected = String::new();
         f.read_to_string(&mut expected).unwrap();
@@ -528,12 +528,8 @@ mod kat_tests {
     }
 
     #[test]
-    fn test_argon2i() {
-        compare_kats("kats/argon2i", a2::Argon2Variant::Argon2i);
-    }
+    fn test_argon2i() { compare_kats("kats/argon2i", a2::Variant::Argon2i); }
 
     #[test]
-    fn test_argon2d() {
-        compare_kats("kats/argon2d", a2::Argon2Variant::Argon2d);
-    }
+    fn test_argon2d() { compare_kats("kats/argon2d", a2::Variant::Argon2d); }
 }
