@@ -191,7 +191,7 @@ impl Argon2 {
         // finish rest of first slice
         let (m_, slicelen) = (self.blocks.len() as u32, self.lanelen / 4);
         // TODO: argon2d
-        for ((j1, j2), idx) in IndexGen::new(0, lane, 0, m_, self.passes)
+        for ((j1, j2), idx) in Gen2i::new(0, lane, 0, m_, self.passes)
                                    .skip(2)
                                    .zip(2..slicelen) {
             let z = index_alpha(0, lane, 0, self.lanes, idx, slicelen, j1, j2);
@@ -209,7 +209,7 @@ impl Argon2 {
         let m_ = self.blocks.len() as u32;
         let p = self.passes;
 
-        for ((j1, j2), idx) in IndexGen::new(pass, lane, slice, m_, p)
+        for ((j1, j2), idx) in Gen2i::new(pass, lane, slice, m_, p)
                                    .zip(0..slicelen) {
             let ls = self.lanes;
             let z = index_alpha(pass, lane, slice, ls, idx, slicelen, j1, j2);
@@ -281,13 +281,13 @@ pub fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
     (startpos + relpos) % lanelen
 }
 
-pub struct IndexGen {
+pub struct Gen2i {
     arg: Block,
     pseudos: Block,
     idx: usize,
 }
 
-impl IndexGen {
+impl Gen2i {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn new(pass: u32, lane: u32, slice: u32, totblocks: u32, totpasses: u32)
                -> IndexGen {
@@ -307,7 +307,7 @@ impl IndexGen {
     }
 }
 
-impl Iterator for IndexGen {
+impl Iterator for Gen2i {
     type Item = (u32, u32);
     fn next(&mut self) -> Option<Self::Item> {
         let oct = self.pseudos[self.idx];
