@@ -5,7 +5,7 @@ use self::blake2::Blake2b;
 use std::iter::FromIterator;
 use std::ptr;
 
-#[derive(Clone, Copy)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub enum Argon2Variant {
     Argon2d = 0,
     Argon2i = 1,
