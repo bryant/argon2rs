@@ -29,11 +29,11 @@ fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
 }
 
-pub type Block = [u64; per_block!(u64)];
+type Block = [u64; per_block!(u64)];
 
-pub fn zero() -> Block { [0; per_block!(u64)] }
+fn zero() -> Block { [0; per_block!(u64)] }
 
-pub fn xor_all(blocks: &Vec<&Block>) -> Block {
+fn xor_all(blocks: &Vec<&Block>) -> Block {
     let mut rv: Block = zero();
     for (idx, d) in rv.iter_mut().enumerate() {
         *d = blocks.iter().fold(0, |n, &&blk| n ^ blk[idx]);
@@ -41,7 +41,7 @@ pub fn xor_all(blocks: &Vec<&Block>) -> Block {
     rv
 }
 
-pub fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
+fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
 
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
 
@@ -83,10 +83,9 @@ fn u8_string(bs: &[u8]) -> String {
 fn blksum(blk: &Block) -> u64 { blk.iter().fold(0 as u64, |sum, &n| n + sum) }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-pub fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32,
-          version: u32, variant: Argon2Variant,
-          p: &[u8], s: &[u8], k: &[u8], x: &[u8])
-          -> [u8; 72] {
+fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
+      variant: Argon2Variant, p: &[u8], s: &[u8], k: &[u8], x: &[u8])
+      -> [u8; 72] {
     let mut rv = [0 as u8; 72];
     b2hash!(&mut rv[0..DEF_B2HASH_LEN];
             &as32le(lanes), &as32le(hash_length), &as32le(memory_kib),
@@ -180,7 +179,7 @@ impl Argon2 {
         (self.lanelen * row + col) as usize
     }
 
-    pub fn fill_first_slice(&mut self, mut h0: [u8; 72], lane: u32) {
+    fn fill_first_slice(&mut self, mut h0: [u8; 72], lane: u32) {
         // fill the first (of four) slice
         h0[68..72].clone_from_slice(&as32le(lane));
 
@@ -238,8 +237,8 @@ impl Argon2 {
     }
 }
 
-pub fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
-               -> (&mut T, &T, &T) {
+fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
+           -> (&mut T, &T, &T) {
     assert!(wr != rd0 && wr != rd1 && wr < vector.len() &&
             rd0 < vector.len() && rd1 < vector.len());
     let p: *mut [T] = &mut vector[..];
@@ -248,7 +247,7 @@ pub fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
     rv
 }
 
-pub fn h_prime(out: &mut [u8], input: &[u8]) {
+fn h_prime(out: &mut [u8], input: &[u8]) {
     if out.len() <= DEF_B2HASH_LEN {
         b2hash!(out; &len32(out), input);
     } else {
@@ -268,9 +267,9 @@ pub fn h_prime(out: &mut [u8], input: &[u8]) {
 }
 
 // from opt.c
-pub fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
-                   slicelen: u32, j1: u32, j2: u32)
-                   -> u32 {
+fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
+               slicelen: u32, j1: u32, j2: u32)
+               -> u32 {
     let lanelen = slicelen * 4;
     let r: u32 = match (pass, slice, j2 % lanes == lane) {
         (0, 0, _) => sliceidx - 1,
@@ -295,7 +294,7 @@ pub fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
     (startpos + relpos) % lanelen
 }
 
-pub struct Gen2i {
+struct Gen2i {
     arg: Block,
     pseudos: Block,
     idx: usize,
@@ -333,7 +332,7 @@ impl Gen2i {
 
 // g x y = let r = x `xor` y in p_col (p_row r) `xor` r,
 // very simd-able.
-pub fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
+fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
     for (d, (l, r)) in dest.iter_mut().zip(lhs.iter().zip(rhs.iter())) {
         *d = *l ^ *r;
     }
@@ -357,7 +356,7 @@ pub fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
 }
 
 // g2 y = g 0 (g 0 y). used for data-independent index generation.
-pub fn g_two(dest: &mut Block, src: &Block) {
+fn g_two(dest: &mut Block, src: &Block) {
     *dest = *src;
 
     for row in 0..8 {
