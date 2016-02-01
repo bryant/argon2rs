@@ -95,7 +95,7 @@ pub fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32,
 }
 
 pub struct Argon2 {
-    pub blocks: Vec<Block>,
+    blocks: Vec<Block>,
     passes: u32,
     lanelen: u32,
     lanes: u32,
