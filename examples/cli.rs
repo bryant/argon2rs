@@ -18,7 +18,7 @@ fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
     }
 
     let mut out = [0 as u8; CLI_TOOL_HASH_LEN];
-    a.simple(&mut out, msg, &s);
+    a.hash(&mut out, msg, &s, &[], &[]);
     out
 }
 

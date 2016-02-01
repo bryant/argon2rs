@@ -14,6 +14,7 @@ const ARGON2_BLOCK_BYTES: usize = 1024;
 const ARGON2_VERSION: u32 = 0x10;
 const DEF_B2HASH_LEN: usize = 64;
 const SLICES_PER_LANE: u32 = 4;
+const DEF_HASH_LEN: usize = 64;
 // from run.c
 const T_COST_DEF: u32 = 3;
 const LOG_M_COST_DEF: u32 = 12;
@@ -108,10 +109,6 @@ impl Argon2 {
             origkib: memory_kib,
             variant: variant,
         }
-    }
-
-    pub fn simple(&mut self, out: &mut [u8], p: &[u8], s: &[u8]) {
-        self.hash(out, p, s, &[], &[])
     }
 
     pub fn hash(&mut self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
@@ -211,6 +208,22 @@ impl Argon2 {
             _ => block_index - 1,
         }
     }
+}
+
+pub fn simple2i(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
+    let var = Variant::Argon2i;
+    let mut out = [0; DEF_HASH_LEN];
+    let mut a2 = Argon2::new(T_COST_DEF, LANES_DEF, 1 << LOG_M_COST_DEF, var);
+    a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
+    out
+}
+
+pub fn simple2d(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
+    let var = Variant::Argon2d;
+    let mut out = [0; DEF_HASH_LEN];
+    let mut a2 = Argon2::new(T_COST_DEF, LANES_DEF, 1 << LOG_M_COST_DEF, var);
+    a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
+    out
 }
 
 fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
