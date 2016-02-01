@@ -4,7 +4,7 @@ use std::mem;
 use self::blake2::Blake2b;
 use std::iter::FromIterator;
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Argon2Variant {
     Argon2d = 0,
     Argon2i = 1,
@@ -415,4 +415,125 @@ fn p_col(col: usize, b: &mut Block) {
 fn lower_mult(a: u64, b: u64) -> u64 {
     fn lower32(k: u64) -> u64 { k & 0xffffffff }
     lower32(a).wrapping_mul(lower32(b)).wrapping_mul(2)
+}
+
+#[cfg(test)]
+mod kat_tests {
+    use argon2 as a2;
+    use std::fs::File;
+    use std::iter::FromIterator;
+    use std::io::Read;
+
+    // from genkat.c
+    const TEST_OUTLEN: usize = 32;
+    const TEST_PWDLEN: usize = 32;
+    const TEST_SALTLEN: usize = 16;
+    const TEST_SECRETLEN: usize = 8;
+    const TEST_ADLEN: usize = 12;
+
+    fn u8info(prefix: &str, bytes: &[u8], print_length: bool) -> String {
+        let bs = bytes.iter()
+                      .fold(String::new(), |xs, b| xs + &format!("{:02x} ", b));
+        let len = match print_length {
+            false => ": ".to_string(),
+            true => format!("[{}]: ", bytes.len()),
+        };
+        prefix.to_string() + &len + &bs
+
+    }
+
+    fn block_info(i: usize, b: &a2::Block) -> String {
+        b.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
+            xs + "Block " + &format!("{:004} ", i) + &format!("[{:>3}]: ", j) +
+            &format!("{:0016x}", octword) + "\n"
+        })
+    }
+
+    pub fn gen_kat(a: &mut a2::Argon2, tau: u32, p: &[u8], s: &[u8], k: &[u8],
+                   x: &[u8])
+                   -> String {
+        let eol = "\n";
+        let mut rv = format!("======================================={:?}",
+                             a.variant) + eol +
+                     &format!("Memory: {} KiB, ", a.origkib) +
+                     &format!("Iterations: {}, ", a.passes) +
+                     &format!("Parallelism: {} lanes, ", a.lanes) +
+                     &format!("Tag length: {} bytes", tau) +
+                     eol + &u8info("Password", p, true) +
+                     eol +
+                     &u8info("Salt", s, true) +
+                     eol + &u8info("Secret", k, true) +
+                     eol +
+                     &u8info("Associated data", x, true) +
+                     eol;
+
+        let h0 = a.h0(tau, p, s, k, x);
+        rv = rv +
+             &u8info("Pre-hashing digest", &h0[..a2::DEF_B2HASH_LEN], false) +
+             eol;
+
+        // first pass
+        for l in 0..a.lanes {
+            a.fill_first_slice(h0, l);
+        }
+        for slice in 1..4 {
+            for l in 0..a.lanes {
+                a.fill_slice(0, l, slice, 0);
+            }
+        }
+
+        rv = rv + eol + " After pass 0:" + eol;
+        for (i, block) in a.blocks.iter().enumerate() {
+            rv = rv + &block_info(i, block);
+        }
+
+        for p in 1..a.passes {
+            for s in 0..a2::SLICES_PER_LANE {
+                for l in 0..a.lanes {
+                    a.fill_slice(p, l, s, 0);
+                }
+            }
+
+            rv = rv + eol + &format!(" After pass {}:", p) + eol;
+            for (i, block) in a.blocks.iter().enumerate() {
+                rv = rv + &block_info(i, block);
+            }
+        }
+
+        let lastcol: Vec<&a2::Block> = Vec::from_iter((0..a.lanes).map(|l| {
+            &a.blocks[a.blkidx(l, a.lanelen - 1)]
+        }));
+
+        let mut out = vec![0; tau as usize];
+        a2::h_prime(&mut out, a2::as_u8(&a2::xor_all(&lastcol)));
+        rv + &u8info("Tag", &out, false)
+    }
+
+    fn compare_kats(fexpected: &str, variant: a2::Argon2Variant) {
+        let mut f = File::open(fexpected).unwrap();
+        let mut expected = String::new();
+        f.read_to_string(&mut expected).unwrap();
+
+        let mut a = a2::Argon2::new(3, 4, 32, variant);
+        let actual = gen_kat(&mut a,
+                             TEST_OUTLEN as u32,
+                             &[1; TEST_PWDLEN],
+                             &[2; TEST_SALTLEN],
+                             &[3; TEST_SECRETLEN],
+                             &[4; TEST_ADLEN]);
+        if expected.trim() != actual.trim() {
+            println!("{}", actual);
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn test_argon2i() {
+        compare_kats("kats/argon2i", a2::Argon2Variant::Argon2i);
+    }
+
+    #[test]
+    fn test_argon2d() {
+        compare_kats("kats/argon2d", a2::Argon2Variant::Argon2d);
+    }
 }
