@@ -29,17 +29,27 @@ pub type Block = [u64; per_block!(u64)];
 
 pub fn zero() -> Block { [0; per_block!(u64)] }
 
-pub fn xor_all(blocks: &Vec<&Block>) -> [u8; per_block!(u8)] {
+pub fn xor_all(blocks: &Vec<&Block>) -> Block {
     let mut rv: Block = zero();
     for (idx, d) in rv.iter_mut().enumerate() {
         *d = blocks.iter().fold(0, |n, &&blk| n ^ blk[idx]);
     }
-    unsafe { mem::transmute(rv) }
+    rv
 }
 
 pub fn as32le(k: u32) -> [u8; 4] { let z = k.to_le(); [(z & 0xff) as u8, (z >> 8 & 0xff) as u8, (z >> 16 & 0xff) as u8, (z >> 24 & 0xff) as u8] }//{ unsafe { mem::transmute(k.to_le()) } }
 
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
+
+fn as_u8_mut(b: &mut Block) -> &mut [u8] {
+    let rv: &mut [u8; per_block!(u8)] = unsafe { mem::transmute(b) };
+    rv
+}
+
+fn as_u8(b: &Block) -> &[u8] {
+    let rv: &[u8; per_block!(u8)] = unsafe { mem::transmute(b) };
+    rv
+}
 
 macro_rules! b2hash {
     ($($bytes: expr),*) => {
@@ -173,15 +183,7 @@ impl Argon2 {
             &self.blocks[self.blkidx(l, self.lanelen - 1)]
         }));
 
-        h_prime(out, &xor_all(&lastcol));
-    }
-
-    fn block_as_u8(&mut self, lane: u32, laneidx: u32) -> &mut [u8] {
-        let idx = (lane * self.lanelen + laneidx) as usize;
-        let rv: &mut [u8; per_block!(u8)] = unsafe {
-            mem::transmute(&mut self.blocks[idx])
-        };
-        rv
+        h_prime(out, as_u8(&xor_all(&lastcol)));
     }
 
     fn blkidx(&self, row: u32, col: u32) -> usize {
@@ -193,10 +195,12 @@ impl Argon2 {
         copy_memory(&as32le(lane), &mut h0[68..72]);
 
         copy_memory(&as32le(0), &mut h0[64..68]);
-        h_prime(self.block_as_u8(lane, 0), &h0);
+        let zeroth = self.blkidx(lane, 0);
+        h_prime(as_u8_mut(&mut self.blocks[zeroth]), &h0);
 
         copy_memory(&as32le(1), &mut h0[64..68]);
-        h_prime(self.block_as_u8(lane, 1), &h0);
+        let first = self.blkidx(lane, 1);
+        h_prime(as_u8_mut(&mut self.blocks[first]), &h0);
 
         // finish rest of first slice
         let (m_, slicelen) = (self.blocks.len() as u32, self.lanelen / 4);
