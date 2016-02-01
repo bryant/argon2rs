@@ -9,4 +9,4 @@ keywords = ["crypto", "argon2", "argon2i", "argon2d", "hash"]
 license = "MIT"
 
 [dependencies]
-rust-blake2 = { git = "https://github.com/ebfe/rust-blake2" }
+blake2-rfc = "0.2.16"
