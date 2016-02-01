@@ -66,14 +66,13 @@ fn u8_string(bs: &[u8]) -> String {
     rv
 }
 
-fn blksum(blk: &Block) -> u64 {
-    blk.iter().fold(0 as u64, |sum, &n| n + sum)
-}
+fn blksum(blk: &Block) -> u64 { blk.iter().fold(0 as u64, |sum, &n| n + sum) }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 pub fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32,
           version: u32, variant: Argon2Variant,
-          p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> [u8; 72] {
+          p: &[u8], s: &[u8], k: &[u8], x: &[u8])
+          -> [u8; 72] {
     let mut rv = [0 as u8; 72];
     b2hash!(&mut rv[0..DEF_B2HASH_LEN];
             &as32le(lanes), &as32le(hash_length), &as32le(memory_kib),
@@ -149,7 +148,7 @@ impl Argon2 {
             println!("{}", u8_string(ns));
         }
 
-    // TODO: parallelize
+        // TODO: parallelize
         for l in 0..self.lanes {
             let h0__ = h0;
             self.fill_first_slice(h0__, l);
@@ -157,13 +156,12 @@ impl Argon2 {
 
         // finish first pass. slices have to be filled in sync.
         for slice in 1..4 {
-        for l in 0..self.lanes {
-            self.fill_slice(0, l, slice);
-        }
+            for l in 0..self.lanes {
+                self.fill_slice(0, l, slice);
+            }
         }
 
         for p in 1..self.passes {
-            // slices of each lane filled in sync
             for s in 0..SLICES_PER_LANE {
                 for l in 0..self.lanes {
                     self.fill_slice(p, l, s);
