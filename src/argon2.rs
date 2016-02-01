@@ -182,13 +182,13 @@ impl Argon2 {
 
     pub fn fill_first_slice(&mut self, mut h0: [u8; 72], lane: u32) {
         // fill the first (of four) slice
-        copy_memory(&as32le(lane), &mut h0[68..72]);
+        h0[68..72].clone_from_slice(&as32le(lane));
 
-        copy_memory(&as32le(0), &mut h0[64..68]);
+        h0[64..68].clone_from_slice(&as32le(0));
         let zeroth = self.blkidx(lane, 0);
         h_prime(as_u8_mut(&mut self.blocks[zeroth]), &h0);
 
-        copy_memory(&as32le(1), &mut h0[64..68]);
+        h0[64..68].clone_from_slice(&as32le(1));
         let first = self.blkidx(lane, 1);
         h_prime(as_u8_mut(&mut self.blocks[first]), &h0);
 
@@ -253,12 +253,12 @@ pub fn h_prime(out: &mut [u8], input: &[u8]) {
         b2hash!(out; &len32(out), input);
     } else {
         let mut tmp = b2hash!(&len32(out), input);
-        copy_memory(&tmp, &mut out[0..DEF_B2HASH_LEN]);
+        out[0..DEF_B2HASH_LEN].clone_from_slice(&tmp);
         let mut wr_at: usize = 32;
 
         while out.len() - wr_at > DEF_B2HASH_LEN {
             b2hash!(&mut tmp; &tmp);
-            copy_memory(&tmp, &mut out[wr_at..wr_at + DEF_B2HASH_LEN]);
+            out[wr_at..wr_at + DEF_B2HASH_LEN].clone_from_slice(&tmp);
             wr_at += DEF_B2HASH_LEN / 2;
         }
 
@@ -452,15 +452,4 @@ fn p_col(col: usize, b: &mut Block) {
 fn lower_mult(a: u64, b: u64) -> u64 {
     fn lower32(k: u64) -> u64 { k & 0xffffffff }
     lower32(a).wrapping_mul(lower32(b)).wrapping_mul(2)
-}
-
-// TODO: from cryptoutil
-#[inline]
-pub fn copy_memory(src: &[u8], dst: &mut [u8]) {
-    assert!(dst.len() >= src.len());
-    unsafe {
-        let srcp = src.as_ptr();
-        let dstp = dst.as_mut_ptr();
-        ptr::copy_nonoverlapping(srcp, dstp, src.len());
-    }
 }
