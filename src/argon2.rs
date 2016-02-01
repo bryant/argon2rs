@@ -118,20 +118,6 @@ impl Argon2 {
         }
     }
 
-    pub fn default2d() -> Argon2 {
-        Argon2::new(T_COST_DEF,
-                    1 << LOG_M_COST_DEF,
-                    LANES_DEF,
-                    Argon2Variant::Argon2d)
-    }
-
-    pub fn default2i() -> Argon2 {
-        Argon2::new(T_COST_DEF,
-                    1 << LOG_M_COST_DEF,
-                    LANES_DEF,
-                    Argon2Variant::Argon2i)
-    }
-
     pub fn simple(&mut self, out: &mut [u8], p: &[u8], s: &[u8]) {
         self.hash(out, p, s, &[], &[])
     }
