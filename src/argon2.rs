@@ -3,7 +3,6 @@ extern crate blake2;
 use std::mem;
 use self::blake2::Blake2b;
 use std::iter::FromIterator;
-use std::ptr;
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub enum Argon2Variant {
