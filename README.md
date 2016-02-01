@@ -40,6 +40,10 @@ hashing.
 - Parallelize.
 - Incorporate SIMD into compression function.
 
+## LICENSE
+
+MIT.
+
 ## References
 
 [1] https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf "Argon2: The Memory-Hard Function for Password Hashing and Other Applications"

@@ -6,6 +6,7 @@ repository = "https://github.com/bryant/argon2rs"
 description = "The pure Rust password hashing library that runs on Argon2."
 readme = "README.md"
 keywords = ["crypto", "argon2", "argon2i", "argon2d", "hash"]
+license = "MIT"
 
 [dependencies]
 rust-blake2 = { git = "https://github.com/ebfe/rust-blake2" }
