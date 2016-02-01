@@ -124,11 +124,9 @@ impl Argon2 {
         self.hash(out, p, s, &[], &[])
     }
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn hash(&mut self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
                 x: &[u8]) {
-        let h0 = h0(self.lanes, out.len() as u32, self.origkib, self.passes,
-                    ARGON2_VERSION, self.variant, p, s, k, x);
+        let h0 = self.h0(out.len() as u32, p, s, k, x);
         println!("{:08x} lanes", self.lanes);
         println!("{:08x} hashlen", out.len() as u32);
         println!("{:08x} m", self.origkib);
@@ -171,6 +169,12 @@ impl Argon2 {
         }));
 
         h_prime(out, as_u8(&xor_all(&lastcol)));
+    }
+
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn h0(&self, tau: u32, p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> [u8; 72] {
+        h0(self.lanes, tau, self.origkib, self.passes, ARGON2_VERSION,
+           self.variant, p, s, k, x)
     }
 
     fn blkidx(&self, row: u32, col: u32) -> usize {
