@@ -276,17 +276,12 @@ pub fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
         (_, _, true) => lanelen - slicelen + sliceidx - 1,
     };
 
-    let relpos = {
-        let j = j1 as u64;
-        let x = j * j >> 32;
-        let y = (r as u64 * x) >> 32;
-        (r as u64 - 1 - y) as u32
-    };
+    let (r_, j1_) = (r as u64, j1 as u64);
+    let relpos: u32 = (r_ - 1 - (r_ * (j1_ * j1_ >> 32) >> 32)) as u32;
 
-    let startpos: u32 = if pass == 0 || slice == 3 {
-        0
-    } else {
-        slicelen * (slice + 1)
+    let startpos: u32 = match (pass, slice) {
+        (0, _) | (_, 3) => 0,
+        _ => slicelen * (slice + 1),
     };
 
     println!("index_alpha {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} = {:08x}",
