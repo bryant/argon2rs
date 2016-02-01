@@ -71,16 +71,6 @@ macro_rules! b2hash {
     };
 }
 
-fn u8_string(bs: &[u8]) -> String {
-    let mut rv = String::new();
-    for b in bs.iter() {
-        rv.push_str(&format!("{:02x} ", b));
-    }
-    rv
-}
-
-fn blksum(blk: &Block) -> u64 { blk.iter().fold(0 as u64, |sum, &n| n + sum) }
-
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
       variant: Argon2Variant, p: &[u8], s: &[u8], k: &[u8], x: &[u8])
