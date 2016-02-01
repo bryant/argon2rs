@@ -257,12 +257,10 @@ fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
     let (r_, j1_) = (r as u64, j1 as u64);
     let relpos: u32 = (r_ - 1 - (r_ * (j1_ * j1_ >> 32) >> 32)) as u32;
 
-    let startpos: u32 = match (pass, slice) {
-        (0, _) | (_, 3) => 0,
-        _ => slicelen * (slice + 1),
-    };
-
-    (startpos + relpos) % lanelen
+    match (pass, slice) {
+        (0, _) | (_, 3) => relpos % lanelen,
+        _ => (slicelen * (slice + 1) + relpos) % lanelen,
+    }
 }
 
 struct Gen2i {
