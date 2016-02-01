@@ -127,22 +127,6 @@ impl Argon2 {
     pub fn hash(&mut self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
                 x: &[u8]) {
         let h0 = self.h0(out.len() as u32, p, s, k, x);
-        println!("{:08x} lanes", self.lanes);
-        println!("{:08x} hashlen", out.len() as u32);
-        println!("{:08x} m", self.origkib);
-        println!("{:08x} t", self.passes);
-        println!("{:08x} |p|", p.len() as u32);
-        println!("{}", u8_string(p));
-        println!("{:08x} |s|", s.len() as u32);
-        println!("{}", u8_string(s));
-        println!("{:08x} |k|", k.len());
-        println!("{}", u8_string(k));
-        println!("{:08x} |x|", x.len());
-        println!("{}", u8_string(x));
-        println!("h0:");
-        for ns in (&h0[0..DEF_B2HASH_LEN]).chunks(16) {
-            println!("{}", u8_string(ns));
-        }
 
         // TODO: parallelize
         for l in 0..self.lanes {
@@ -245,7 +229,6 @@ fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
             rd0 < vector.len() && rd1 < vector.len());
     let p: *mut [T] = &mut vector[..];
     let rv = unsafe { (&mut (*p)[wr], &(*p)[rd0], &(*p)[rd1]) };
-    println!("{} {} {}", wr, rd0, rd1);
     rv
 }
 
@@ -288,10 +271,6 @@ fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
         (0, _) | (_, 3) => 0,
         _ => slicelen * (slice + 1),
     };
-
-    println!("index_alpha {:x} {:x} {:x} {:x} {:x} {:x} {:x} {:x} = {:08x}",
-             pass, lane, slice, lanes, sliceidx, slicelen, j1, j2,
-             (startpos + relpos) % lanelen);
 
     (startpos + relpos) % lanelen
 }
@@ -350,11 +329,6 @@ fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
     for (d, (l, r)) in dest.iter_mut().zip(lhs.iter().zip(rhs.iter())) {
         *d = *d ^ *l ^ *r;
     }
-
-    println!("rd0 {:016x}", blksum(lhs));
-    println!("ref {:016x}", blksum(rhs));
-    println!("blksum {:016x}", blksum(dest));
-
 }
 
 // g2 y = g 0 (g 0 y). used for data-independent index generation.
