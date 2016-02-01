@@ -449,9 +449,9 @@ mod kat_tests {
         })
     }
 
-    pub fn gen_kat(a: &mut a2::Argon2, tau: u32, p: &[u8], s: &[u8], k: &[u8],
-                   x: &[u8])
-                   -> String {
+    fn gen_kat(a: &mut a2::Argon2, tau: u32, p: &[u8], s: &[u8], k: &[u8],
+               x: &[u8])
+               -> String {
         let eol = "\n";
         let mut rv = format!("======================================={:?}",
                              a.variant) + eol +
