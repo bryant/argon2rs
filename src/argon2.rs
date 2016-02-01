@@ -148,8 +148,7 @@ impl Argon2 {
 
         // TODO: parallelize
         for l in 0..self.lanes {
-            let h0__ = h0;
-            self.fill_first_slice(h0__, l);
+            self.fill_first_slice(h0, l);
         }
 
         // finish first pass. slices have to be filled in sync.
