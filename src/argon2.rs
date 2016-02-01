@@ -25,6 +25,10 @@ macro_rules! per_block {
     (u64) => { ARGON2_BLOCK_BYTES / 8 };
 }
 
+fn split_u64(n: u64) -> (u32, u32) {
+    ((n & 0xffffffff) as u32, (n >> 32) as u32)
+}
+
 pub type Block = [u64; per_block!(u64)];
 
 pub fn zero() -> Block { [0; per_block!(u64)] }
@@ -153,14 +157,14 @@ impl Argon2 {
         // finish first pass. slices have to be filled in sync.
         for slice in 1..4 {
             for l in 0..self.lanes {
-                self.fill_slice(0, l, slice);
+                self.fill_slice(0, l, slice, 0);
             }
         }
 
         for p in 1..self.passes {
             for s in 0..SLICES_PER_LANE {
                 for l in 0..self.lanes {
-                    self.fill_slice(p, l, s);
+                    self.fill_slice(p, l, s, 0);
                 }
             }
         }
@@ -189,37 +193,47 @@ impl Argon2 {
         h_prime(as_u8_mut(&mut self.blocks[first]), &h0);
 
         // finish rest of first slice
-        let (m_, slicelen) = (self.blocks.len() as u32, self.lanelen / 4);
-        // TODO: argon2d
-        for ((j1, j2), idx) in Gen2i::new(0, lane, 0, m_, self.passes)
-                                   .skip(2)
-                                   .zip(2..slicelen) {
-            let z = index_alpha(0, lane, 0, self.lanes, idx, slicelen, j1, j2);
-            let _k = self.blkidx(lane, z);
-            // ^^^ r == s == 0 -> l = current lane
+        self.fill_slice(0, lane, 0, 2);
+    }
 
-            let w = self.blkidx(lane, idx);
-            let (wr, prev, refblk) = get3(&mut self.blocks, w, w - 1, _k);
-            g(wr, prev, refblk);
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn fill_slice(&mut self, pass: u32, lane: u32, slice: u32, offset: u32) {
+        let mut jgen = Gen2i::new(offset as usize, pass, lane, slice,
+                                  self.blocks.len() as u32, self.passes);
+        let slicelen = self.lanelen / SLICES_PER_LANE;
+
+        for idx in offset..slicelen {
+            let (j1, j2) = if self.variant == Argon2Variant::Argon2i {
+                jgen.nextj()
+            } else {
+                let i = self.prev(self.blkidx(lane, slice * slicelen + idx));
+                split_u64((self.blocks[i])[0])
+            };
+            self.fill_block(pass, lane, slice, idx, j1, j2);
         }
     }
 
-    pub fn fill_slice(&mut self, pass: u32, lane: u32, slice: u32) {
+    fn fill_block(&mut self, pass: u32, lane: u32, slice: u32, idx: u32,
+                  j1: u32, j2: u32) {
         let slicelen = self.lanelen / SLICES_PER_LANE;
-        let m_ = self.blocks.len() as u32;
-        let p = self.passes;
+        let ls = self.lanes;
+        let z = index_alpha(pass, lane, slice, ls, idx, slicelen, j1, j2);
 
-        for ((j1, j2), idx) in Gen2i::new(pass, lane, slice, m_, p)
-                                   .zip(0..slicelen) {
-            let ls = self.lanes;
-            let z = index_alpha(pass, lane, slice, ls, idx, slicelen, j1, j2);
+        let zth = match (pass, slice) {
+            (0, 0) => self.blkidx(lane, z),
+            _ => self.blkidx(j2 % self.lanes, z),
+        };
 
-            let _k = self.blkidx(j2 % self.lanes, z);
-            let w = self.blkidx(lane, slice * slicelen + idx);
-            let _p = if w % self.lanelen as usize != 0 { w - 1 } else { w + self.lanelen as usize - 1 };
+        let cur = self.blkidx(lane, slice * slicelen + idx);
+        let pre = self.prev(cur);
+        let (wr, rd, refblk) = get3(&mut self.blocks, cur, pre, zth);
+        g(wr, rd, refblk);
+    }
 
-            let (wr, prev, refblk) = get3(&mut self.blocks, w, _p, _k);
-            g(wr, prev, refblk);
+    fn prev(&self, block_index: usize) -> usize {
+        match block_index % self.lanelen as usize {
+            0 => block_index + self.lanelen as usize - 1,
+            _ => block_index - 1,
         }
     }
 }
@@ -289,9 +303,10 @@ pub struct Gen2i {
 
 impl Gen2i {
     #[cfg_attr(rustfmt, rustfmt_skip)]
-    pub fn new(pass: u32, lane: u32, slice: u32, totblocks: u32, totpasses: u32)
-               -> IndexGen {
-        let mut rv = IndexGen { arg: zero(), pseudos: zero(), idx: 0 };
+    fn new(start_at: usize, pass: u32, lane: u32, slice: u32, totblocks: u32,
+           totpasses: u32)
+           -> Gen2i {
+        let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
         let args = [pass, lane, slice, totblocks, totpasses,
                     Argon2Variant::Argon2i as u32];
         for (k, v) in rv.arg.iter_mut().zip(args.into_iter()) {
@@ -301,21 +316,18 @@ impl Gen2i {
         rv
     }
 
-    pub fn more(&mut self) {
+    fn more(&mut self) {
         self.arg[6] += 1;
         g_two(&mut self.pseudos, &self.arg);
     }
-}
 
-impl Iterator for Gen2i {
-    type Item = (u32, u32);
-    fn next(&mut self) -> Option<Self::Item> {
-        let oct = self.pseudos[self.idx];
+    fn nextj(&mut self) -> (u32, u32) {
+        let rv = split_u64(self.pseudos[self.idx]);
         self.idx = (self.idx + 1) % per_block!(u64);
         if self.idx == 0 {
             self.more();
         }
-        Some(((oct & 0xffffffff) as u32, (oct >> 32) as u32))
+        rv
     }
 }
 
