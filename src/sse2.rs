@@ -119,3 +119,27 @@ impl u64x2 {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::u64x2;
+
+    const T0: u64x2 = u64x2(0xdeadbeef_01234567, 0xcafe3210_babe9932);
+    const T1: u64x2 = u64x2(0x09990578_01234567, 0x1128f9a9_88e89448);
+
+    #[test]
+    fn test_rotate_right() {
+        for &s in [8 as u32, 16, 24, 32].iter() {
+            assert_eq!(T0.rotate_right(s as u64).0, T0.0.rotate_right(s));
+            assert_eq!(T0.rotate_right(s as u64).1, T0.1.rotate_right(s));
+        }
+    }
+
+    #[test]
+    fn test_lower_mult() {
+        fn lo(a: u64) -> u64 { a & 0xffffffff }
+        assert_eq!(T0.lower_mult(T1), T1.lower_mult(T0));
+        assert_eq!(T0.lower_mult(T1).0, lo(T0.0) * lo(T1.0));
+        assert_eq!(T0.lower_mult(T1).1, lo(T0.1) * lo(T1.1));
+    }
+}
