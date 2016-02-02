@@ -118,6 +118,13 @@ impl u64x2 {
             _ => self << u64x2(64 - n, 64 - n) ^ self >> u64x2(n, n),
         }
     }
+
+    #[inline(always)]
+    pub fn cross_swap(self, r: Self) -> (Self, Self) {
+        // 45, 67 => 74, 56
+        (u64x2(r.1, self.0), u64x2(self.1, r.0))
+    }
+
 }
 
 #[cfg(test)]
