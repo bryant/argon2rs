@@ -121,10 +121,12 @@ impl u64x2 {
 
     #[inline(always)]
     pub fn cross_swap(self, r: Self) -> (Self, Self) {
-        // 45, 67 => 74, 56
-        (u64x2(r.1, self.0), u64x2(self.1, r.0))
+        let u64x2(v4, v5) = self;       // so the rule is:
+        let u64x2(v6, v7) = r;          // +--+
+        (u64x2(v7, v4), u64x2(v5, v6))  //  \/
+                                        //  /\
+                                        // 1  0
     }
-
 }
 
 #[cfg(test)]
