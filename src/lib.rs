@@ -1,4 +1,8 @@
+#![feature(repr_simd, platform_intrinsics)]
+
 extern crate blake2_rfc;
+
+pub mod sse2;
 
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;

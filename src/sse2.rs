@@ -1,0 +1,121 @@
+use std::mem::transmute;
+use std::ops::{Add, BitXor, Mul, Shl, Shr};
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(simd)]
+#[allow(non_camel_case_types)]
+pub struct u64x2(pub u64, pub u64);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(simd)]
+#[allow(non_camel_case_types)]
+struct u32x4(u32, u32, u32, u32);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(simd)]
+#[allow(non_camel_case_types)]
+struct u8x16(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
+
+extern "platform-intrinsic" {
+    fn x86_mm_mul_epu32(x: u32x4, y: u32x4) -> u64x2;
+    fn simd_add<T>(x: T, y: T) -> T;
+    fn simd_mul<T>(x: T, y: T) -> T;
+    fn simd_xor<T>(x: T, y: T) -> T;
+    fn simd_shr<T>(x: T, y: T) -> T;
+    fn simd_shl<T>(x: T, y: T) -> T;
+    fn simd_shuffle16<T, U>(x: T, y: T, idx: [u32; 16]) -> U;
+}
+
+impl Add for u64x2 {
+    type Output = Self;
+    #[inline(always)]
+    fn add(self, r: Self) -> Self::Output { unsafe { simd_add(self, r) } }
+}
+
+impl Mul for u64x2 {
+    type Output = Self;
+    #[inline(always)]
+    fn mul(self, r: Self) -> Self { unsafe { simd_mul(self, r) } }
+}
+
+impl Shl<u64x2> for u64x2 {
+    type Output = Self;
+    #[inline(always)]
+    fn shl(self, r: Self) -> Self { unsafe { simd_shl(self, r) } }
+}
+
+impl Shr<u64x2> for u64x2 {
+    type Output = Self;
+    #[inline(always)]
+    fn shr(self, r: Self) -> Self { unsafe { simd_shr(self, r) } }
+}
+
+impl BitXor for u64x2 {
+    type Output = Self;
+    #[inline(always)]
+    fn bitxor(self, r: Self) -> u64x2 { unsafe { simd_xor(self, r) } }
+}
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
+impl u8x16 {
+    #[inline(always)]
+    fn rotr_32_u64x2(self) -> u64x2 {
+        unsafe {
+            let rv: Self = simd_shuffle16(self, self, [4, 5, 6, 7, 0, 1, 2, 3,
+                                                12, 13, 14, 15, 8, 9, 10, 11]);
+            transmute(rv)
+        }
+    }
+
+    #[inline(always)]
+    fn rotr_24_u64x2(self) -> u64x2 {
+        // recall that rotating right = rotating towards lsb
+        unsafe {
+            let rv: Self = simd_shuffle16(self, self, [3, 4, 5, 6, 7, 0, 1, 2,
+                                                11, 12, 13, 14, 15, 8, 9, 10]);
+            transmute(rv)
+        }
+    }
+
+    #[inline(always)]
+    fn rotr_16_u64x2(self) -> u64x2 {
+        unsafe {
+            let rv: Self = simd_shuffle16(self, self, [2, 3, 4, 5, 6, 7, 0, 1,
+                                                10, 11, 12, 13, 14, 15, 8, 9]);
+            transmute(rv)
+        }
+    }
+
+    #[inline(always)]
+    fn rotr_8_u64x2(self) -> u64x2 {
+        unsafe {
+            let rv: Self = simd_shuffle16(self, self, [1, 2, 3, 4, 5, 6, 7, 0,
+                                                9, 10, 11, 12, 13, 14, 15, 8]);
+            transmute(rv)
+        }
+    }
+}
+
+impl u64x2 {
+    #[inline(always)]
+    fn as_u8x16(self) -> u8x16 { unsafe { transmute(self) } }
+
+    #[inline(always)]
+    pub fn lower_mult(self, r: Self) -> Self {
+        unsafe {
+            let (lhs, rhs): (u32x4, u32x4) = (transmute(self), transmute(r));
+            x86_mm_mul_epu32(lhs, rhs)
+        }
+    }
+
+    #[inline(always)]
+    pub fn rotate_right(self, n: u64) -> Self {
+        match n {
+            32 => self.as_u8x16().rotr_32_u64x2(),
+            24 => self.as_u8x16().rotr_24_u64x2(),
+            16 => self.as_u8x16().rotr_16_u64x2(),
+            8 => self.as_u8x16().rotr_8_u64x2(),
+            _ => self << u64x2(64 - n, 64 - n) ^ self >> u64x2(n, n),
+        }
+    }
+}
