@@ -24,7 +24,7 @@ const T_COST_DEF: u32 = 3;
 const LOG_M_COST_DEF: u32 = 12;
 const LANES_DEF: u32 = 1;
 
-macro_rules! per_block {
+macro_rules! per_kib {
     (u8) => { ARGON2_BLOCK_BYTES };
     (u64) => { ARGON2_BLOCK_BYTES / 8 };
 }
@@ -33,9 +33,9 @@ fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
 }
 
-type Block = [u64; per_block!(u64)];
+type Block = [u64; per_kib!(u64)];
 
-fn zero() -> Block { [0; per_block!(u64)] }
+fn zero() -> Block { [0; per_kib!(u64)] }
 
 fn xor_all(blocks: &Vec<&Block>) -> Block {
     let mut rv: Block = zero();
@@ -50,12 +50,12 @@ fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
 
 fn as_u8_mut(b: &mut Block) -> &mut [u8] {
-    let rv: &mut [u8; per_block!(u8)] = unsafe { mem::transmute(b) };
+    let rv: &mut [u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
     rv
 }
 
 fn as_u8(b: &Block) -> &[u8] {
-    let rv: &[u8; per_block!(u8)] = unsafe { mem::transmute(b) };
+    let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
     rv
 }
 
@@ -308,7 +308,7 @@ impl Gen2i {
 
     fn nextj(&mut self) -> (u32, u32) {
         let rv = split_u64(self.pseudos[self.idx]);
-        self.idx = (self.idx + 1) % per_block!(u64);
+        self.idx = (self.idx + 1) % per_kib!(u64);
         if self.idx == 0 {
             self.more();
         }
