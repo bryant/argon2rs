@@ -1,5 +1,5 @@
 use std::mem::transmute;
-use std::ops::{Add, BitXor, Mul, Shl, Shr};
+use std::ops::{Add, BitXor, Mul};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(simd)]
@@ -29,25 +29,13 @@ extern "platform-intrinsic" {
 impl Add for u64x2 {
     type Output = Self;
     #[inline(always)]
-    fn add(self, r: Self) -> Self::Output { unsafe { simd_add(self, r) } }
+    fn add(self, r: Self) -> Self { unsafe { simd_add(self, r) } }
 }
 
 impl Mul for u64x2 {
     type Output = Self;
     #[inline(always)]
     fn mul(self, r: Self) -> Self { unsafe { simd_mul(self, r) } }
-}
-
-impl Shl<u64x2> for u64x2 {
-    type Output = Self;
-    #[inline(always)]
-    fn shl(self, r: Self) -> Self { unsafe { simd_shl(self, r) } }
-}
-
-impl Shr<u64x2> for u64x2 {
-    type Output = Self;
-    #[inline(always)]
-    fn shr(self, r: Self) -> Self { unsafe { simd_shr(self, r) } }
 }
 
 impl BitXor for u64x2 {
@@ -109,13 +97,17 @@ impl u64x2 {
     }
 
     #[inline(always)]
-    pub fn rotate_right(self, n: u64) -> Self {
+    pub fn rotate_right(self, n: u32) -> Self {
         match n {
             32 => self.as_u8x16().rotr_32_u64x2(),
             24 => self.as_u8x16().rotr_24_u64x2(),
             16 => self.as_u8x16().rotr_16_u64x2(),
             8 => self.as_u8x16().rotr_8_u64x2(),
-            _ => self << u64x2(64 - n, 64 - n) ^ self >> u64x2(n, n),
+            _ => unsafe {
+                let k = (64 - n) as u64;
+                simd_shl(self, u64x2(k, k)) ^
+                simd_shr(self, u64x2(n as u64, n as u64))
+            },
         }
     }
 
