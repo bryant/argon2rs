@@ -131,8 +131,8 @@ mod test {
     #[test]
     fn test_rotate_right() {
         for &s in [8 as u32, 16, 24, 32].iter() {
-            assert_eq!(T0.rotate_right(s as u64).0, T0.0.rotate_right(s));
-            assert_eq!(T0.rotate_right(s as u64).1, T0.1.rotate_right(s));
+            assert_eq!(T0.rotate_right(s).0, T0.0.rotate_right(s));
+            assert_eq!(T0.rotate_right(s).1, T0.1.rotate_right(s));
         }
     }
 
