@@ -34,7 +34,9 @@ impl Add for u64x2 {
     fn add(self, r: Self) -> Self { unsafe { simd_add(self, r) } }
     #[cfg(not(feature = "simd"))]
     #[inline(always)]
-    fn add(self, r: Self) -> Self { u64x2(self.0 + r.0, self.1 + r.1) }
+    fn add(self, r: Self) -> Self {
+        u64x2(self.0.wrapping_add(r.0), self.1.wrapping_add(r.1))
+    }
 }
 
 impl Mul for u64x2 {
@@ -43,7 +45,9 @@ impl Mul for u64x2 {
     #[inline(always)]
     fn mul(self, r: Self) -> Self { unsafe { simd_mul(self, r) } }
     #[cfg(not(feature = "simd"))]
-    fn mul(self, r: Self) -> Self { u64x2(self.0 * r.0, self.1 * r.1) }
+    fn mul(self, r: Self) -> Self {
+        u64x2(self.0.wrapping_mul(r.0), self.1.wrapping_mul(r.1))
+    }
 }
 
 impl BitXor for u64x2 {
