@@ -14,3 +14,4 @@ simd = ["blake2-rfc/simd_asm"]
 
 [dependencies]
 blake2-rfc = "0.2.16"
+crossbeam = "0.2.5"

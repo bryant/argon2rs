@@ -1,6 +1,7 @@
 #![feature(repr_simd, platform_intrinsics)]
 
 extern crate blake2_rfc;
+extern crate crossbeam;
 
 mod octword;
 
@@ -10,7 +11,7 @@ mod block;
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;
 use octword::u64x2;
-use block::{Block, Matrix, ARGON2_BLOCK_BYTES};
+use block::{ARGON2_BLOCK_BYTES, Block, Matrix};
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Variant {
@@ -127,24 +128,29 @@ impl Argon2 {
                     ARGON2_VERSION, self.variant, p, s, k, x);
         h0_fn(&h0);  // kats
 
-        // TODO: parallelize
-        for l in 0..self.lanes as u32 {
-            self.fill_first_slice(&mut blocks, h0, l);
-        }
-
-        // finish first pass. slices have to be filled in sync.
-        for slice in 1..4 {
-            for l in 0..self.lanes as u32 {
-                self.fill_slice(&mut blocks, 0, l, slice, 0);
+        crossbeam::scope(|sc| {
+            for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
+                sc.spawn(move || self.fill_first_slice(bref, h0, l));
             }
+        });
+
+    // finish first pass. slices have to be filled in sync.
+        for slice in 1..4 {
+            crossbeam::scope(|sc| {
+                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
+                    sc.spawn(move || self.fill_slice(bref, 0, l, slice, 0));
+                }
+            });
         }
         pass_fn(0, &blocks);  // kats
 
         for p in 1..self.passes {
             for s in 0..SLICES_PER_LANE {
-                for l in 0..self.lanes {
-                    self.fill_slice(&mut blocks, p, l, s, 0);
-                }
+                crossbeam::scope(|sc| {
+                    for (l, b) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
+                        sc.spawn(move || self.fill_slice(b, p, l, s, 0));
+                    }
+                });
             }
             pass_fn(p, &blocks);  // kats
         }
