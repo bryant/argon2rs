@@ -16,6 +16,7 @@ struct u32x4(u32, u32, u32, u32);
 #[allow(non_camel_case_types)]
 struct u8x16(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
 
+#[cfg(feature = "simd")]
 extern "platform-intrinsic" {
     fn x86_mm_mul_epu32(x: u32x4, y: u32x4) -> u64x2;
     fn simd_add<T>(x: T, y: T) -> T;
@@ -28,23 +29,35 @@ extern "platform-intrinsic" {
 
 impl Add for u64x2 {
     type Output = Self;
+    #[cfg(feature = "simd")]
     #[inline(always)]
     fn add(self, r: Self) -> Self { unsafe { simd_add(self, r) } }
+    #[cfg(not(feature = "simd"))]
+    #[inline(always)]
+    fn add(self, r: Self) -> Self { u64x2(self.0 + r.0, self.1 + r.1) }
 }
 
 impl Mul for u64x2 {
     type Output = Self;
+    #[cfg(feature = "simd")]
     #[inline(always)]
     fn mul(self, r: Self) -> Self { unsafe { simd_mul(self, r) } }
+    #[cfg(not(feature = "simd"))]
+    fn mul(self, r: Self) -> Self { u64x2(self.0 * r.0, self.1 * r.1) }
 }
 
 impl BitXor for u64x2 {
     type Output = Self;
+    #[cfg(feature = "simd")]
     #[inline(always)]
     fn bitxor(self, r: Self) -> u64x2 { unsafe { simd_xor(self, r) } }
+    #[cfg(not(feature = "simd"))]
+    #[inline(always)]
+    fn bitxor(self, r: Self) -> u64x2 { u64x2(self.0 ^ r.0, self.1 ^ r.1) }
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[cfg(feature = "simd")]
 impl u8x16 {
     #[inline(always)]
     fn rotr_32_u64x2(self) -> u64x2 {
@@ -84,10 +97,14 @@ impl u8x16 {
     }
 }
 
+fn lo(n: u64) -> u64 { n & 0xffffffff }
+
 impl u64x2 {
+    #[cfg(feature = "simd")]
     #[inline(always)]
     fn as_u8x16(self) -> u8x16 { unsafe { transmute(self) } }
 
+    #[cfg(feature = "simd")]
     #[inline(always)]
     pub fn lower_mult(self, r: Self) -> Self {
         unsafe {
@@ -96,6 +113,13 @@ impl u64x2 {
         }
     }
 
+    #[cfg(not(feature = "simd"))]
+    #[inline(always)]
+    pub fn lower_mult(self, r: Self) -> Self {
+        u64x2(lo(self.0) * lo(r.0), lo(self.1) * lo(r.1))
+    }
+
+    #[cfg(feature = "simd")]
     #[inline(always)]
     pub fn rotate_right(self, n: u32) -> Self {
         match n {
@@ -109,6 +133,12 @@ impl u64x2 {
                 simd_shr(self, u64x2(n as u64, n as u64))
             },
         }
+    }
+
+    #[cfg(not(feature = "simd"))]
+    #[inline(always)]
+    pub fn rotate_right(self, n: u32) -> Self {
+        u64x2(self.0.rotate_right(n), self.1.rotate_right(n))
     }
 
     #[inline(always)]
@@ -138,7 +168,7 @@ mod test {
 
     #[test]
     fn test_lower_mult() {
-        fn lo(a: u64) -> u64 { a & 0xffffffff }
+        use super::lo;
         assert_eq!(T0.lower_mult(T1), T1.lower_mult(T0));
         assert_eq!(T0.lower_mult(T1).0, lo(T0.0) * lo(T1.0));
         assert_eq!(T0.lower_mult(T1).1, lo(T0.1) * lo(T1.1));
