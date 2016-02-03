@@ -37,7 +37,7 @@ hashing.
 
 ## TODO
 
-- [ ] Parallelize.
+- [x] Parallelize.
 - [x] Incorporate SIMD into compression function.
 
 ## LICENSE
