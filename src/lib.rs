@@ -2,11 +2,12 @@
 
 extern crate blake2_rfc;
 
-pub mod sse2;
+mod octword;
 
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;
 use std::iter::FromIterator;
+use octword::u64x2;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Variant {
@@ -27,20 +28,21 @@ const LANES_DEF: u32 = 1;
 macro_rules! per_kib {
     (u8) => { ARGON2_BLOCK_BYTES };
     (u64) => { ARGON2_BLOCK_BYTES / 8 };
+    (u64x2) => { ARGON2_BLOCK_BYTES / 16 };
 }
 
 fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
 }
 
-type Block = [u64; per_kib!(u64)];
+type Block = [u64x2; per_kib!(u64x2)];
 
-fn zero() -> Block { [0; per_kib!(u64)] }
+fn zero() -> Block { [u64x2(0, 0); per_kib!(u64x2)] }
 
 fn xor_all(blocks: &Vec<&Block>) -> Block {
     let mut rv: Block = zero();
     for (idx, d) in rv.iter_mut().enumerate() {
-        *d = blocks.iter().fold(0, |n, &&blk| n ^ blk[idx]);
+        *d = blocks.iter().fold(*d, |n, &&blk| n ^ blk[idx]);
     }
     rv
 }
@@ -56,6 +58,11 @@ fn as_u8_mut(b: &mut Block) -> &mut [u8] {
 
 fn as_u8(b: &Block) -> &[u8] {
     let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
+    rv
+}
+
+fn as_u64(b: &Block) -> &[u64] {
+    let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(b) };
     rv
 }
 
@@ -183,7 +190,7 @@ impl Argon2 {
                 jgen.nextj()
             } else {
                 let i = self.prev(self.blkidx(lane, slice * slicelen + idx));
-                split_u64((self.blocks[i])[0])
+                split_u64((self.blocks[i])[0].0)
             };
             self.fill_block(pass, lane, slice, idx, j1, j2);
         }
@@ -292,22 +299,22 @@ impl Gen2i {
            totpasses: u32)
            -> Gen2i {
         let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
-        let args = [pass, lane, slice, totblocks, totpasses,
-                    Variant::Argon2i as u32];
-        for (k, v) in rv.arg.iter_mut().zip(args.into_iter()) {
-            *k = *v as u64;
+        let args = [(pass, lane), (slice, totblocks),
+                    (totpasses, Variant::Argon2i as u32)];
+        for (k, &(lo, hi)) in rv.arg.iter_mut().zip(args.into_iter()) {
+            *k = u64x2(lo as u64, hi as u64);
         }
         rv.more();
         rv
     }
 
     fn more(&mut self) {
-        self.arg[6] += 1;
+        self.arg[3].0 += 1;
         g_two(&mut self.pseudos, &self.arg);
     }
 
     fn nextj(&mut self) -> (u32, u32) {
-        let rv = split_u64(self.pseudos[self.idx]);
+        let rv = split_u64(as_u64(&self.pseudos)[self.idx]);
         self.idx = (self.idx + 1) % per_kib!(u64);
         if self.idx == 0 {
             self.more();
@@ -317,7 +324,6 @@ impl Gen2i {
 }
 
 // g x y = let r = x `xor` y in p_col (p_row r) `xor` r,
-// very simd-able.
 fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
     for (d, (l, r)) in dest.iter_mut().zip(lhs.iter().zip(rhs.iter())) {
         *d = *l ^ *r;
@@ -336,7 +342,8 @@ fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
     }
 }
 
-// g2 y = g 0 (g 0 y). used for data-independent index generation.
+/// ``` g2 y = let g' y = g 0 y in g' . g' ```
+/// Used for data-independent index generation.
 fn g_two(dest: &mut Block, src: &Block) {
     *dest = *src;
 
@@ -366,72 +373,52 @@ fn g_two(dest: &mut Block, src: &Block) {
 }
 
 macro_rules! p {
-    ($v0: expr, $v1: expr, $v2: expr, $v3: expr,
-     $v4: expr, $v5: expr, $v6: expr, $v7: expr,
-     $v8: expr, $v9: expr, $v10: expr, $v11: expr,
-     $v12: expr, $v13: expr, $v14: expr, $v15: expr) => {
-        g_blake2b!($v0, $v4, $v8, $v12); g_blake2b!($v1, $v5, $v9, $v13);
-        g_blake2b!($v2, $v6, $v10, $v14); g_blake2b!($v3, $v7, $v11, $v15);
-        g_blake2b!($v0, $v5, $v10, $v15); g_blake2b!($v1, $v6, $v11, $v12);
-        g_blake2b!($v2, $v7, $v8, $v13); g_blake2b!($v3, $v4, $v9, $v14);
+    ($v0v1: expr, $v2v3: expr, $v4v5: expr, $v6v7: expr,
+     $v8v9: expr, $v10v11: expr, $v12v13: expr, $v14v15: expr) => {
+        {
+            g_blake2b!($v0v1, $v4v5, $v8v9, $v12v13);
+            g_blake2b!($v2v3, $v6v7, $v10v11, $v14v15);
+
+            let (mut v7v4, mut v5v6) = $v4v5.cross_swap($v6v7);
+            let (mut v15v12, mut v13v14) = $v12v13.cross_swap($v14v15);
+
+            g_blake2b!($v0v1, v5v6, $v10v11, v15v12);
+            g_blake2b!($v2v3, v7v4, $v8v9, v13v14);
+
+            let (v4v5, v6v7) = v5v6.cross_swap(v7v4);
+            let (v12v13, v14v15) = v13v14.cross_swap(v15v12);
+            $v4v5 = v4v5;
+            $v6v7 = v6v7;
+            $v12v13 = v12v13;
+            $v14v15 = v14v15;
+        }
     };
 }
 
 macro_rules! g_blake2b {
     ($a: expr, $b: expr, $c: expr, $d: expr) => {
-        $a = $a.wrapping_add($b).wrapping_add(lower_mult($a, $b));
+        $a = $a + $b + $a.lower_mult($b) * u64x2(2, 2);
         $d = ($d ^ $a).rotate_right(32);
-        $c = $c.wrapping_add($d).wrapping_add(lower_mult($c, $d));
+        $c = $c + $d + $c.lower_mult($d) * u64x2(2, 2);
         $b = ($b ^ $c).rotate_right(24);
-        $a = $a.wrapping_add($b).wrapping_add(lower_mult($a, $b));
+        $a = $a + $b + $a.lower_mult($b) * u64x2(2, 2);
         $d = ($d ^ $a).rotate_right(16);
-        $c = $c.wrapping_add($d).wrapping_add(lower_mult($c, $d));
+        $c = $c + $d + $c.lower_mult($d) * u64x2(2, 2);
         $b = ($b ^ $c).rotate_right(63);
-
-    }
+    };
 }
 
+
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn p_row(row: usize, b: &mut Block) {
-    p!(b[16 * row + 0],
-       b[16 * row + 1],
-       b[16 * row + 2],
-       b[16 * row + 3],
-       b[16 * row + 4],
-       b[16 * row + 5],
-       b[16 * row + 6],
-       b[16 * row + 7],
-       b[16 * row + 8],
-       b[16 * row + 9],
-       b[16 * row + 10],
-       b[16 * row + 11],
-       b[16 * row + 12],
-       b[16 * row + 13],
-       b[16 * row + 14],
-       b[16 * row + 15]);
+    p!(b[8 * row + 0], b[8 * row + 1], b[8 * row + 2], b[8 * row + 3],
+       b[8 * row + 4], b[8 * row + 5], b[8 * row + 6], b[8 * row + 7]);
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 fn p_col(col: usize, b: &mut Block) {
-    p!(b[2 * col + 16 * 0],
-       b[2 * col + 16 * 0 + 1],
-       b[2 * col + 16 * 1],
-       b[2 * col + 16 * 1 + 1],
-       b[2 * col + 16 * 2],
-       b[2 * col + 16 * 2 + 1],
-       b[2 * col + 16 * 3],
-       b[2 * col + 16 * 3 + 1],
-       b[2 * col + 16 * 4],
-       b[2 * col + 16 * 4 + 1],
-       b[2 * col + 16 * 5],
-       b[2 * col + 16 * 5 + 1],
-       b[2 * col + 16 * 6],
-       b[2 * col + 16 * 6 + 1],
-       b[2 * col + 16 * 7],
-       b[2 * col + 16 * 7 + 1]);
-}
-
-fn lower_mult(a: u64, b: u64) -> u64 {
-    fn lower32(k: u64) -> u64 { k & 0xffffffff }
-    lower32(a).wrapping_mul(lower32(b)).wrapping_mul(2)
+    p!(b[8 * 0 + col], b[8 * 1 + col], b[8 * 2 + col], b[8 * 3 + col],
+       b[8 * 4 + col], b[8 * 5 + col], b[8 * 6 + col], b[8 * 7 + col]);
 }
 
 #[cfg(test)]
@@ -459,7 +446,8 @@ mod kat_tests {
     }
 
     fn block_info(i: usize, b: &super::Block) -> String {
-        b.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
+        let blk = super::as_u64(b);
+        blk.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
             xs + "Block " + &format!("{:004} ", i) + &format!("[{:>3}]: ", j) +
             &format!("{:0016x}", octword) + "\n"
         })
