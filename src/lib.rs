@@ -4,10 +4,13 @@ extern crate blake2_rfc;
 
 mod octword;
 
+#[macro_use]
+mod block;
+
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;
-use std::iter::FromIterator;
 use octword::u64x2;
+use block::{Block, Matrix, ARGON2_BLOCK_BYTES};
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Variant {
@@ -15,7 +18,6 @@ pub enum Variant {
     Argon2i = 1,
 }
 
-const ARGON2_BLOCK_BYTES: usize = 1024;
 const ARGON2_VERSION: u32 = 0x10;
 const DEF_B2HASH_LEN: usize = 64;
 const SLICES_PER_LANE: u32 = 4;
@@ -25,22 +27,12 @@ const T_COST_DEF: u32 = 3;
 const LOG_M_COST_DEF: u32 = 12;
 const LANES_DEF: u32 = 1;
 
-macro_rules! per_kib {
-    (u8) => { ARGON2_BLOCK_BYTES };
-    (u64) => { ARGON2_BLOCK_BYTES / 8 };
-    (u64x2) => { ARGON2_BLOCK_BYTES / 16 };
-}
-
 fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
 }
 
-type Block = [u64x2; per_kib!(u64x2)];
-
-fn zero() -> Block { [u64x2(0, 0); per_kib!(u64x2)] }
-
 fn xor_all(blocks: &Vec<&Block>) -> Block {
-    let mut rv: Block = zero();
+    let mut rv: Block = block::zero();
     for (idx, d) in rv.iter_mut().enumerate() {
         *d = blocks.iter().fold(*d, |n, &&blk| n ^ blk[idx]);
     }
@@ -50,21 +42,6 @@ fn xor_all(blocks: &Vec<&Block>) -> Block {
 fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
 
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
-
-fn as_u8_mut(b: &mut Block) -> &mut [u8] {
-    let rv: &mut [u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
-    rv
-}
-
-fn as_u8(b: &Block) -> &[u8] {
-    let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
-    rv
-}
-
-fn as_u64(b: &Block) -> &[u64] {
-    let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(b) };
-    rv
-}
 
 macro_rules! b2hash {
     ($($bytes: expr),*) => {
@@ -99,132 +76,141 @@ fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
 }
 
 pub struct Argon2 {
-    blocks: Vec<Block>,
     passes: u32,
-    lanelen: u32,
     lanes: u32,
-    origkib: u32,
+    lanelen: u32,
+    kib: u32,
     variant: Variant,
 }
 
+pub enum ParamErr {
+    TooFewPasses,
+    TooFewLanes,
+    MinKiB(u64),
+}
+
 impl Argon2 {
-    pub fn new(passes: u32, lanes: u32, memory_kib: u32, variant: Variant)
-               -> Argon2 {
-        assert!(lanes >= 1 && memory_kib >= 8 * lanes && passes >= 1);
-        let lanelen = memory_kib / (4 * lanes) * 4;
-        Argon2 {
-            blocks: (0..lanelen * lanes).map(|_| zero()).collect(),
-            passes: passes,
-            lanelen: lanelen,
-            lanes: lanes,
-            origkib: memory_kib,
-            variant: variant,
+    pub fn new(passes: u32, lanes: u32, kib: u32, variant: Variant)
+               -> Result<Argon2, ParamErr> {
+        if passes < 1 {
+            Result::Err(ParamErr::TooFewPasses)
+        } else if lanes < 1 {
+            Result::Err(ParamErr::TooFewLanes)
+        } else if (kib as u64) < 8 * lanes as u64 {
+            Result::Err(ParamErr::MinKiB(8 * lanes as u64))
+        } else {
+            Result::Ok(Argon2 {
+                passes: passes,
+                lanes: lanes,
+                lanelen: kib / (4 * lanes) * 4,
+                kib: kib,
+                variant: variant,
+            })
         }
     }
 
-    pub fn hash(&mut self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
-                x: &[u8]) {
-        let h0 = self.h0(out.len() as u32, p, s, k, x);
+    pub fn hash(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8]) {
+        self.hash_impl(out, p, s, k, x, |_| {}, |_, _| {});
+    }
+
+    #[cfg_attr(rustfmt, rustfmt_skip)]
+    fn hash_impl<F, G>(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
+                       x: &[u8], mut h0_fn: F, mut pass_fn: G)
+        where F: FnMut(&[u8]) -> (),
+              G: FnMut(u32, &Matrix) -> ()
+    {
+        assert!(out.len() >= 4);
+        assert!(out.len() <= 0xffffffff);
+
+        let mut blocks = Matrix::new(self.lanes, self.lanelen);
+        let h0 = h0(self.lanes, out.len() as u32, self.kib, self.passes,
+                    ARGON2_VERSION, self.variant, p, s, k, x);
+        h0_fn(&h0);  // kats
 
         // TODO: parallelize
-        for l in 0..self.lanes {
-            self.fill_first_slice(h0, l);
+        for l in 0..self.lanes as u32 {
+            self.fill_first_slice(&mut blocks, h0, l);
         }
 
         // finish first pass. slices have to be filled in sync.
         for slice in 1..4 {
-            for l in 0..self.lanes {
-                self.fill_slice(0, l, slice, 0);
+            for l in 0..self.lanes as u32 {
+                self.fill_slice(&mut blocks, 0, l, slice, 0);
             }
         }
+        pass_fn(0, &blocks);  // kats
 
         for p in 1..self.passes {
             for s in 0..SLICES_PER_LANE {
                 for l in 0..self.lanes {
-                    self.fill_slice(p, l, s, 0);
+                    self.fill_slice(&mut blocks, p, l, s, 0);
                 }
             }
+            pass_fn(p, &blocks);  // kats
         }
 
-        let lastcol: Vec<&Block> = Vec::from_iter((0..self.lanes).map(|l| {
-            &self.blocks[self.blkidx(l, self.lanelen - 1)]
-        }));
-
-        h_prime(out, as_u8(&xor_all(&lastcol)));
+        h_prime(out, block::as_u8(&xor_all(&blocks.col(self.lanelen - 1))));
     }
 
-    #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn h0(&self, tau: u32, p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> [u8; 72] {
-        h0(self.lanes, tau, self.origkib, self.passes, ARGON2_VERSION,
-           self.variant, p, s, k, x)
-    }
-
-    fn blkidx(&self, row: u32, col: u32) -> usize {
-        (self.lanelen * row + col) as usize
-    }
-
-    fn fill_first_slice(&mut self, mut h0: [u8; 72], lane: u32) {
+    fn fill_first_slice(&self, blks: &mut Matrix, mut h0: [u8; 72], lane: u32) {
         // fill the first (of four) slice
         h0[68..72].clone_from_slice(&as32le(lane));
 
         h0[64..68].clone_from_slice(&as32le(0));
-        let zeroth = self.blkidx(lane, 0);
-        h_prime(as_u8_mut(&mut self.blocks[zeroth]), &h0);
+        h_prime(block::as_u8_mut(&mut blks[(lane, 0)]), &h0);
 
         h0[64..68].clone_from_slice(&as32le(1));
-        let first = self.blkidx(lane, 1);
-        h_prime(as_u8_mut(&mut self.blocks[first]), &h0);
+        h_prime(block::as_u8_mut(&mut blks[(lane, 1)]), &h0);
 
         // finish rest of first slice
-        self.fill_slice(0, lane, 0, 2);
+        self.fill_slice(blks, 0, lane, 0, 2);
     }
 
     #[cfg_attr(rustfmt, rustfmt_skip)]
-    fn fill_slice(&mut self, pass: u32, lane: u32, slice: u32, offset: u32) {
+    fn fill_slice(&self, blks: &mut Matrix, pass: u32, lane: u32, slice: u32,
+                  offset: u32) {
         let mut jgen = Gen2i::new(offset as usize, pass, lane, slice,
-                                  self.blocks.len() as u32, self.passes);
+                                  self.lanes * self.lanelen, self.passes);
         let slicelen = self.lanelen / SLICES_PER_LANE;
 
         for idx in offset..slicelen {
             let (j1, j2) = if self.variant == Variant::Argon2i {
                 jgen.nextj()
             } else {
-                let i = self.prev(self.blkidx(lane, slice * slicelen + idx));
-                split_u64((self.blocks[i])[0].0)
+                let col = self.prev(slice * slicelen + idx);
+                split_u64((blks[(lane, col)])[0].0)
             };
-            self.fill_block(pass, lane, slice, idx, j1, j2);
+            self.fill_block(blks, pass, lane, slice, idx, j1, j2);
         }
     }
 
-    fn fill_block(&mut self, pass: u32, lane: u32, slice: u32, idx: u32,
-                  j1: u32, j2: u32) {
+    fn fill_block(&self, blks: &mut Matrix, pass: u32, lane: u32, slice: u32,
+                  idx: u32, j1: u32, j2: u32) {
         let slicelen = self.lanelen / SLICES_PER_LANE;
         let ls = self.lanes;
         let z = index_alpha(pass, lane, slice, ls, idx, slicelen, j1, j2);
 
         let zth = match (pass, slice) {
-            (0, 0) => self.blkidx(lane, z),
-            _ => self.blkidx(j2 % self.lanes, z),
+            (0, 0) => (lane, z),
+            _ => (j2 % self.lanes, z),
         };
 
-        let cur = self.blkidx(lane, slice * slicelen + idx);
-        let pre = self.prev(cur);
-        let (wr, rd, refblk) = get3(&mut self.blocks, cur, pre, zth);
+        let cur = (lane, slice * slicelen + idx);
+        let pre = (lane, self.prev(cur.1));
+        let (wr, rd, refblk) = blks.get3(cur, pre, zth);
         g(wr, rd, refblk);
     }
 
-    fn prev(&self, block_index: usize) -> usize {
-        match block_index % self.lanelen as usize {
-            0 => block_index + self.lanelen as usize - 1,
-            _ => block_index - 1,
-        }
+    fn prev(&self, n: u32) -> u32 {
+        if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
 }
 
 pub fn simple2i(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
     let var = Variant::Argon2i;
     let mut out = [0; DEF_HASH_LEN];
-    let mut a2 = Argon2::new(T_COST_DEF, LANES_DEF, 1 << LOG_M_COST_DEF, var);
+    let mem = 1 << LOG_M_COST_DEF;
+    let a2 = Argon2::new(T_COST_DEF, LANES_DEF, mem, var).ok().unwrap();
     a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
     out
 }
@@ -232,18 +218,10 @@ pub fn simple2i(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
 pub fn simple2d(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
     let var = Variant::Argon2d;
     let mut out = [0; DEF_HASH_LEN];
-    let mut a2 = Argon2::new(T_COST_DEF, LANES_DEF, 1 << LOG_M_COST_DEF, var);
+    let mem = 1 << LOG_M_COST_DEF;
+    let a2 = Argon2::new(T_COST_DEF, LANES_DEF, mem, var).ok().unwrap();
     a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
     out
-}
-
-fn get3<T>(vector: &mut Vec<T>, wr: usize, rd0: usize, rd1: usize)
-           -> (&mut T, &T, &T) {
-    assert!(wr != rd0 && wr != rd1 && wr < vector.len() &&
-            rd0 < vector.len() && rd1 < vector.len());
-    let p: *mut [T] = &mut vector[..];
-    let rv = unsafe { (&mut (*p)[wr], &(*p)[rd0], &(*p)[rd1]) };
-    rv
 }
 
 fn h_prime(out: &mut [u8], input: &[u8]) {
@@ -298,6 +276,8 @@ impl Gen2i {
     fn new(start_at: usize, pass: u32, lane: u32, slice: u32, totblocks: u32,
            totpasses: u32)
            -> Gen2i {
+        use block::zero;
+
         let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
         let args = [(pass, lane), (slice, totblocks),
                     (totpasses, Variant::Argon2i as u32)];
@@ -314,7 +294,7 @@ impl Gen2i {
     }
 
     fn nextj(&mut self) -> (u32, u32) {
-        let rv = split_u64(as_u64(&self.pseudos)[self.idx]);
+        let rv = split_u64(block::as_u64(&self.pseudos)[self.idx]);
         self.idx = (self.idx + 1) % per_kib!(u64);
         if self.idx == 0 {
             self.more();
@@ -424,8 +404,8 @@ fn p_col(col: usize, b: &mut Block) {
 #[cfg(test)]
 mod kat_tests {
     use std::fs::File;
-    use std::iter::FromIterator;
     use std::io::Read;
+    use super::block;
 
     // from genkat.c
     const TEST_OUTLEN: usize = 32;
@@ -445,73 +425,12 @@ mod kat_tests {
 
     }
 
-    fn block_info(i: usize, b: &super::Block) -> String {
-        let blk = super::as_u64(b);
+    fn block_info(i: usize, b: &block::Block) -> String {
+        let blk = block::as_u64(b);
         blk.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
             xs + "Block " + &format!("{:004} ", i) + &format!("[{:>3}]: ", j) +
             &format!("{:0016x}", octword) + "\n"
         })
-    }
-
-    fn gen_kat(a: &mut super::Argon2, tau: u32, p: &[u8], s: &[u8], k: &[u8],
-               x: &[u8])
-               -> String {
-        let eol = "\n";
-        let mut rv = format!("======================================={:?}",
-                             a.variant) + eol +
-                     &format!("Memory: {} KiB, ", a.origkib) +
-                     &format!("Iterations: {}, ", a.passes) +
-                     &format!("Parallelism: {} lanes, ", a.lanes) +
-                     &format!("Tag length: {} bytes", tau) +
-                     eol + &u8info("Password", p, true) +
-                     eol +
-                     &u8info("Salt", s, true) +
-                     eol + &u8info("Secret", k, true) +
-                     eol +
-                     &u8info("Associated data", x, true) +
-                     eol;
-
-        let h0 = a.h0(tau, p, s, k, x);
-        rv = rv +
-             &u8info("Pre-hashing digest",
-                     &h0[..super::DEF_B2HASH_LEN],
-                     false) + eol;
-
-        // first pass
-        for l in 0..a.lanes {
-            a.fill_first_slice(h0, l);
-        }
-        for slice in 1..4 {
-            for l in 0..a.lanes {
-                a.fill_slice(0, l, slice, 0);
-            }
-        }
-
-        rv = rv + eol + " After pass 0:" + eol;
-        for (i, block) in a.blocks.iter().enumerate() {
-            rv = rv + &block_info(i, block);
-        }
-
-        for p in 1..a.passes {
-            for s in 0..super::SLICES_PER_LANE {
-                for l in 0..a.lanes {
-                    a.fill_slice(p, l, s, 0);
-                }
-            }
-
-            rv = rv + eol + &format!(" After pass {}:", p) + eol;
-            for (i, block) in a.blocks.iter().enumerate() {
-                rv = rv + &block_info(i, block);
-            }
-        }
-
-        let lastcol: Vec<&super::Block> =
-            Vec::from_iter((0..a.lanes)
-                               .map(|l| &a.blocks[a.blkidx(l, a.lanelen - 1)]));
-
-        let mut out = vec![0; tau as usize];
-        super::h_prime(&mut out, super::as_u8(&super::xor_all(&lastcol)));
-        rv + &u8info("Tag", &out, false)
     }
 
     fn compare_kats(fexpected: &str, variant: super::Variant) {
@@ -519,15 +438,51 @@ mod kat_tests {
         let mut expected = String::new();
         f.read_to_string(&mut expected).unwrap();
 
-        let mut a = super::Argon2::new(3, 4, 32, variant);
-        let actual = gen_kat(&mut a,
-                             TEST_OUTLEN as u32,
-                             &[1; TEST_PWDLEN],
-                             &[2; TEST_SALTLEN],
-                             &[3; TEST_SECRETLEN],
-                             &[4; TEST_ADLEN]);
-        if expected.trim() != actual.trim() {
-            println!("{}", actual);
+        let (p, s, k, x) = (&[1; TEST_PWDLEN],
+                            &[2; TEST_SALTLEN],
+                            &[3; TEST_SECRETLEN],
+                            &[4; TEST_ADLEN]);
+        let mut out = [0 as u8; TEST_OUTLEN];
+        let argon = super::Argon2::new(3, 4, 32, variant).ok().unwrap();
+        let mut h0output = String::new();
+        let mut blockoutput = String::new();
+
+        {
+            let h0fn = |h0: &[u8]| {
+                let r: &mut String = &mut h0output;
+                r.push_str(&u8info("Pre-hashing digest",
+                                   &h0[..super::DEF_B2HASH_LEN],
+                                   false));
+                r.push_str("\n");
+            };
+
+            let passfn = |p: u32, matrix: &block::Matrix| {
+                let r: &mut String = &mut blockoutput;
+                r.push_str(&format!("\n After pass {}:\n", p));
+                for (i, block) in matrix.iter().flat_map(|ls| ls).enumerate() {
+                    r.push_str(&block_info(i, block));
+                }
+            };
+
+            argon.hash_impl(&mut out, p, s, k, x, h0fn, passfn);
+        }
+
+        let eol = "\n";
+        let rv = format!("======================================={:?}",
+                         argon.variant) + eol +
+                 &format!("Memory: {} KiB, ", argon.kib) +
+                 &format!("Iterations: {}, ", argon.passes) +
+                 &format!("Parallelism: {} lanes, ", argon.lanes) +
+                 &format!("Tag length: {} bytes", out.len()) +
+                 eol + &u8info("Password", p, true) + eol +
+                 &u8info("Salt", s, true) + eol +
+                 &u8info("Secret", k, true) + eol +
+                 &u8info("Associated data", x, true) +
+                 eol + &h0output + &blockoutput +
+                 &u8info("Tag", &out, false);
+
+        if expected.trim() != rv.trim() {
+            println!("{}", rv);
             assert!(false);
         }
     }

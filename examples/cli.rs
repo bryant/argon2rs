@@ -11,7 +11,7 @@ fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
                  -> [u8; CLI_TOOL_HASH_LEN] {
     assert!(salt.len() <= CLI_TOOL_SALT_LEN && passes > 0 && logkib > 0 &&
             lanes > 0);
-    let mut a = Argon2::new(passes, lanes, 1 << logkib, Variant::Argon2i);
+    let a = Argon2::new(passes, lanes, 1 << logkib, Variant::Argon2i).ok().unwrap();
     let mut s = [0; CLI_TOOL_SALT_LEN];
     for (&v, mut k) in salt.iter().zip(s.iter_mut()) {
         *k = v;
