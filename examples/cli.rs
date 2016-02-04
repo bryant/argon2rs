@@ -3,6 +3,7 @@ extern crate argon2rs;
 use argon2rs::{Argon2, Variant};
 use std::string::String;
 use std::env;
+use std::io::{stdin, Read};
 
 const CLI_TOOL_SALT_LEN: usize = 16;
 const CLI_TOOL_HASH_LEN: usize = 32;
@@ -11,7 +12,9 @@ fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
                  -> [u8; CLI_TOOL_HASH_LEN] {
     assert!(salt.len() <= CLI_TOOL_SALT_LEN && passes > 0 && logkib > 0 &&
             lanes > 0);
-    let a = Argon2::new(passes, lanes, 1 << logkib, Variant::Argon2i).ok().unwrap();
+    let a = Argon2::new(passes, lanes, 1 << logkib, Variant::Argon2i)
+                .ok()
+                .unwrap();
     let mut s = [0; CLI_TOOL_SALT_LEN];
     for (&v, mut k) in salt.iter().zip(s.iter_mut()) {
         *k = v;
@@ -33,16 +36,21 @@ fn to_string(bs: &[u8]) -> String {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 6 {
-        println!("usage: {} passes lanes logkib msg salt", args[0]);
+    if args.len() != 5 {
+        println!("Usage: {} passes lanes logkib salt", args[0]);
+        println!("where salt.len() >= 16, memory usage is 2^logkib, and \
+                  plaintext is read from stdin.");
         return;
     }
 
     let t: u32 = args[1].parse().unwrap();
     let l: u32 = args[2].parse().unwrap();
     let logm: u32 = args[3].parse().unwrap();
-    let msg = args[4].as_ref();
-    let salt = args[5].as_ref();
+    let salt = args[4].as_ref();
 
-    println!("Hash: {}", to_string(&that_cli_tool(msg, salt, t, l, logm)));
+    let mut msg = String::new();
+    stdin().read_to_string(&mut msg).unwrap();
+    let p = msg.as_bytes();
+
+    println!("Hash: {}", to_string(&that_cli_tool(p, salt, t, l, logm)));
 }
