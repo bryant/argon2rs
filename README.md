@@ -1,11 +1,29 @@
 argon2rs
 ========
 
-The pure Rust password hashing library that runs on Argon2.
+This is a purely Rust-based library that provides both variants of the
+state-of-the-art Argon2 hashing algorithm, suitable for password hashing and
+password-based key derivation.
+
+## Installation
+
+Via cargo:
+
+```bash
+$ cd $PROJECT_ROOT
+$ cargo install --features "simd threaded"
+```
+
+From git:
+
+```bash
+$ git clone https://github.com/bryant/argon2rs $ARGON_DIR && cd $ARGON_DIR
+$ cargo build --features "simd threaded"
+```
 
 ## Usage
 
-From `examples/helloworld`:
+From `examples/helloworld.rs`:
 
 ```rust
 extern crate argon2rs;
@@ -43,6 +61,19 @@ hashing.
 ## LICENSE
 
 MIT.
+
+## Random Benchmark
+
+Compared with the [reference impl][https://github.com/p-h-c/phc-winner-argon2]
+written in heavily hand-optimized C:
+
+```bash
+~/phc-winner-argon2$ echo -n "asic-resistant but" | time -v ./argon2 'still fast' -t 80 -m 16 -p 9 2>&1 > /dev/null | grep 'wall clock'
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.46
+
+~/argon2rs$ echo -n "asic-resistant but" | time -v ./target/release/examples/cli 80 9 16 'still fast' 2>&1 > /dev/null | grep 'wall clock'
+        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.88
+```
 
 ## References
 
