@@ -79,6 +79,8 @@ fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
     rv
 }
 
+/// Main entry point for running Argon2 on customized parameters (cf. note for
+/// `Argon2::new`).
 pub struct Argon2 {
     passes: u32,
     lanes: u32,
@@ -94,6 +96,22 @@ pub enum ParamErr {
 }
 
 impl Argon2 {
+    /// Use this to customize Argon2's time and memory cost parameters.
+    /// Adjusting any of these will affect the value of the final hash result.
+    ///
+    /// `passes`: The number of block matrix iterations to perform. Increasing
+    /// this forces hashing to take longer. Must be between 1 and 2^32 - 1.
+    ///
+    /// `lanes`: The degree of parallelism by which memory is filled during hash
+    /// computation. Setting this to N instructs argon2rs to partition the block
+    /// matrix into N lanes, simultaneously filling each lane in parallel with N
+    /// threads.
+    ///
+    /// `kib`: Desired total size of block matrix, in kibbibytes (1 KiB = 1024
+    /// bytes). Increasing this forces hashing to use more memory in order to
+    /// thwart ASIC-based attacks. Must be >= 8 * lanes.
+    ///
+    /// `variant`: Set this to `Variant::Argon2i` when hashing passwords.
     pub fn new(passes: u32, lanes: u32, kib: u32, variant: Variant)
                -> Result<Argon2, ParamErr> {
         if passes < 1 {
@@ -113,10 +131,23 @@ impl Argon2 {
         }
     }
 
+    /// Returns an `Argon2` set to default input parameters. See below for a
+    /// description of these parameters.
     pub fn default(v: Variant) -> Argon2 {
         Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v).ok().unwrap()
     }
 
+    /// Runs the selected Argon2 variant over provided inputs, writing the final
+    /// hash to the byte slice `out`. Note that the output length is assumed to
+    /// be `out.len()` and must be between 4 and 2^32 - 1. The inputs are:
+    ///
+    /// `p`, the byte slice containing, typically, the plaintext;
+    ///
+    /// a salt `s` of length 8 bytes or greater;
+    ///
+    /// `k`, an optional (length zero or greater) secret value; and
+    ///
+    /// `x`, optional associated data length 0 to 2^32 - 1.
     pub fn hash(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8]) {
         self.hash_impl(out, p, s, k, x, |_| {}, |_, _| {});
     }
