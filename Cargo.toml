@@ -3,6 +3,7 @@ name = "argon2rs"
 version = "0.1.0"
 authors = ["bryant <bryant@defrag.in>"]
 repository = "https://github.com/bryant/argon2rs"
+documentation = "http://bryant.github.io/argon2rs/"
 description = "The pure Rust password hashing library that runs on Argon2."
 readme = "README.md"
 keywords = ["crypto", "argon2", "argon2i", "argon2d", "hash"]
