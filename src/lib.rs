@@ -219,8 +219,8 @@ impl Argon2 {
     }
 }
 
-/// Convenience wrapper around Argon2i for the majority of password/salt hashing
-/// use cases.
+/// Convenience wrapper around Argon2i for the majority of use cases where only
+/// a password and salt are supplied.
 pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2i);
@@ -228,8 +228,8 @@ pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     out
 }
 
-/// Convenience wrapper around Argon2d for the majority of password/salt hashing
-/// use cases.
+/// Convenience wrapper around Argon2i for the majority of use cases where only
+/// a password and salt are supplied.
 pub fn argon2d_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2d);
