@@ -129,6 +129,8 @@ impl Argon2 {
     {
         assert!(out.len() >= 4);
         assert!(out.len() <= 0xffffffff);
+        assert!(s.len() >= 8);
+        assert!(s.len() <= 0xffffffff);
 
         let mut blocks = Matrix::new(self.lanes, self.lanelen);
         let h0 = h0(self.lanes, out.len() as u32, self.kib, self.passes,
@@ -220,7 +222,8 @@ impl Argon2 {
 }
 
 /// Convenience wrapper around Argon2i for the majority of use cases where only
-/// a password and salt are supplied.
+/// a password and salt are supplied. Note that a salt between 8 and 2^32-1
+/// bytes must be provided.
 pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2i);
@@ -229,7 +232,8 @@ pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
 }
 
 /// Convenience wrapper around Argon2i for the majority of use cases where only
-/// a password and salt are supplied.
+/// a password and salt are supplied. Note that a salt between 8 and 2^32-1
+/// bytes must be provided.
 pub fn argon2d_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2d);
