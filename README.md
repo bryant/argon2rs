@@ -50,7 +50,7 @@ argon2i("argon2i", "delicious"):
 
 There are two variants of Argon2 that differ in the manner by which reference
 indices are computed during block-filling rounds. Argon2d does this in a faster
-but data-dependent fashion that could be vulnerable to side-channel attacks [1],
+but data-dependent fashion that could be vulnerable to side-channel [attacks][1],
 whereas Argon2i ("i" denoting independence from plaintext input) works slower
 but is immune to such attacks and is therefore the preferred choice for password
 hashing.
@@ -66,7 +66,7 @@ MIT.
 
 ## Random Benchmark
 
-Compared with the [reference impl][https://github.com/p-h-c/phc-winner-argon2]
+Compared with the [reference impl](https://github.com/p-h-c/phc-winner-argon2)
 written in heavily hand-optimized C:
 
 ```bash
@@ -79,4 +79,5 @@ written in heavily hand-optimized C:
 
 ## References
 
-[1] https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf "Argon2: The Memory-Hard Function for Password Hashing and Other Applications"
+[1]: https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf
+"Argon2: The Memory-Hard Function for Password Hashing and Other Applications"
