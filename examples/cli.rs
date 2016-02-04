@@ -3,7 +3,7 @@ extern crate argon2rs;
 use argon2rs::{Argon2, Variant};
 use std::string::String;
 use std::env;
-use std::io::{stdin, Read};
+use std::io::{Read, stdin};
 
 const CLI_TOOL_SALT_LEN: usize = 16;
 const CLI_TOOL_HASH_LEN: usize = 32;
