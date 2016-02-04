@@ -22,11 +22,14 @@ pub enum Variant {
 const ARGON2_VERSION: u32 = 0x10;
 const DEF_B2HASH_LEN: usize = 64;
 const SLICES_PER_LANE: u32 = 4;
-const DEF_HASH_LEN: usize = 64;
-// from run.c
-const T_COST_DEF: u32 = 3;
-const LOG_M_COST_DEF: u32 = 12;
-const LANES_DEF: u32 = 1;
+
+pub mod defaults {
+    // from run.c
+    pub const PASSES: u32 = 3;
+    pub const KIB: u32 = 4096;
+    pub const LANES: u32 = 1;
+    pub const LENGTH: usize = 64;
+}
 
 fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
@@ -110,6 +113,10 @@ impl Argon2 {
         }
     }
 
+    pub fn default(v: Variant) -> Argon2 {
+        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v).ok().unwrap()
+    }
+
     pub fn hash(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8]) {
         self.hash_impl(out, p, s, k, x, |_| {}, |_, _| {});
     }
@@ -134,7 +141,7 @@ impl Argon2 {
             }
         });
 
-    // finish first pass. slices have to be filled in sync.
+        // finish first pass. slices have to be filled in sync.
         for slice in 1..4 {
             crossbeam::scope(|sc| {
                 for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
@@ -212,20 +219,16 @@ impl Argon2 {
     }
 }
 
-pub fn simple2i(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
-    let var = Variant::Argon2i;
-    let mut out = [0; DEF_HASH_LEN];
-    let mem = 1 << LOG_M_COST_DEF;
-    let a2 = Argon2::new(T_COST_DEF, LANES_DEF, mem, var).ok().unwrap();
+pub fn simple2i(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
+    let mut out = [0; defaults::LENGTH];
+    let a2 = Argon2::default(Variant::Argon2i);
     a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
     out
 }
 
-pub fn simple2d(password: &str, salt: &str) -> [u8; DEF_HASH_LEN] {
-    let var = Variant::Argon2d;
-    let mut out = [0; DEF_HASH_LEN];
-    let mem = 1 << LOG_M_COST_DEF;
-    let a2 = Argon2::new(T_COST_DEF, LANES_DEF, mem, var).ok().unwrap();
+pub fn simple2d(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
+    let mut out = [0; defaults::LENGTH];
+    let a2 = Argon2::default(Variant::Argon2d);
     a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
     out
 }
