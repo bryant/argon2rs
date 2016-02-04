@@ -64,7 +64,7 @@ impl Matrix {
     }
 
     pub fn lanes_as_mut(&mut self) -> Vec<&mut Self> {
-        let p: *mut Matrix = self;
+        let p: *mut Self = self;
         (0..self.0.len()).map(|_| unsafe { &mut (*p) }).collect()
     }
 
