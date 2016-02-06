@@ -59,6 +59,7 @@ hashing.
 
 - [x] Parallelize.
 - [x] Incorporate SIMD into compression function.
+- [ ] Support NEON and SIMD on other arches.
 
 ## LICENSE
 
