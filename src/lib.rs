@@ -99,7 +99,9 @@ impl Argon2 {
     /// Returns an `Argon2` set to default input parameters. See below for a
     /// description of these parameters.
     pub fn default(v: Variant) -> Argon2 {
-        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v).ok().unwrap()
+        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v)
+            .ok()
+            .unwrap()
     }
 
     /// Use this to customize Argon2's time and memory cost parameters.
@@ -453,7 +455,8 @@ fn p_col(col: usize, b: &mut Block) {
 mod kat_tests {
     use std::fs::File;
     use std::io::Read;
-    use super::block;
+    use super::{Argon2, block};
+    use std::fmt::Write;
 
     // from genkat.c
     const TEST_OUTLEN: usize = 32;
@@ -461,6 +464,9 @@ mod kat_tests {
     const TEST_SALTLEN: usize = 16;
     const TEST_SECRETLEN: usize = 8;
     const TEST_ADLEN: usize = 12;
+
+    macro_rules! w { ($($args: expr),*) => { let _ = write!($($args),*); }; }
+    macro_rules! wl { ($($args: expr),*) => { let _ = writeln!($($args),*); }; }
 
     fn u8info(prefix: &str, bytes: &[u8], print_length: bool) -> String {
         let bs = bytes.iter()
@@ -481,53 +487,55 @@ mod kat_tests {
         })
     }
 
+    fn run_and_collect(arg: &Argon2, out: &mut [u8], p: &[u8], s: &[u8],
+                       k: &[u8], x: &[u8])
+                       -> (String, String) {
+        let (mut h0output, mut blockoutput) = (String::new(), String::new());
+
+        {
+            let h0fn = |h0: &[u8]| {
+                wl!(&mut h0output,
+                    "{}",
+                    u8info("Pre-hashing digest",
+                           &h0[..super::DEF_B2HASH_LEN],
+                           false));
+            };
+
+            let passfn = |p: u32, matrix: &block::Matrix| {
+                wl!(&mut blockoutput, "\n After pass {}:", p);
+                for (i, block) in matrix.iter().flat_map(|ls| ls).enumerate() {
+                    w!(&mut blockoutput, "{}", block_info(i, block));
+                }
+            };
+
+            arg.hash_impl(out, p, s, k, x, h0fn, passfn);
+        }
+
+        (h0output, blockoutput)
+    }
+
     fn compare_kats(fexpected: &str, variant: super::Variant) {
         let mut f = File::open(fexpected).unwrap();
         let mut expected = String::new();
         f.read_to_string(&mut expected).unwrap();
 
-        let (p, s, k, x) = (&[1; TEST_PWDLEN],
-                            &[2; TEST_SALTLEN],
-                            &[3; TEST_SECRETLEN],
-                            &[4; TEST_ADLEN]);
+        let (p, s) = (&[1; TEST_PWDLEN], &[2; TEST_SALTLEN]);
+        let (k, x) = (&[3; TEST_SECRETLEN], &[4; TEST_ADLEN]);
         let mut out = [0 as u8; TEST_OUTLEN];
-        let argon = super::Argon2::new(3, 4, 32, variant).ok().unwrap();
-        let mut h0output = String::new();
-        let mut blockoutput = String::new();
+        let a2 = Argon2::new(3, 4, 32, variant).ok().unwrap();
+        let (h0, blocks) = run_and_collect(&a2, &mut out, p, s, k, x);
 
-        {
-            let h0fn = |h0: &[u8]| {
-                let r: &mut String = &mut h0output;
-                r.push_str(&u8info("Pre-hashing digest",
-                                   &h0[..super::DEF_B2HASH_LEN],
-                                   false));
-                r.push_str("\n");
-            };
-
-            let passfn = |p: u32, matrix: &block::Matrix| {
-                let r: &mut String = &mut blockoutput;
-                r.push_str(&format!("\n After pass {}:\n", p));
-                for (i, block) in matrix.iter().flat_map(|ls| ls).enumerate() {
-                    r.push_str(&block_info(i, block));
-                }
-            };
-
-            argon.hash_impl(&mut out, p, s, k, x, h0fn, passfn);
-        }
-
-        let eol = "\n";
-        let rv = format!("======================================={:?}",
-                         argon.variant) + eol +
-                 &format!("Memory: {} KiB, ", argon.kib) +
-                 &format!("Iterations: {}, ", argon.passes) +
-                 &format!("Parallelism: {} lanes, ", argon.lanes) +
-                 &format!("Tag length: {} bytes", out.len()) +
-                 eol + &u8info("Password", p, true) + eol +
-                 &u8info("Salt", s, true) + eol +
-                 &u8info("Secret", k, true) + eol +
-                 &u8info("Associated data", x, true) +
-                 eol + &h0output + &blockoutput +
-                 &u8info("Tag", &out, false);
+        let mut rv = String::new();
+        wl!(rv, "======================================={:?}", a2.variant);
+        w!(rv, "Memory: {} KiB, Iterations: {}, ", a2.kib, a2.passes);
+        w!(rv, "Parallelism: {} lanes, ", a2.lanes);
+        wl!(rv, "Tag length: {} bytes", out.len());
+        wl!(rv, "{}", u8info("Password", p, true));
+        wl!(rv, "{}", u8info("Salt", s, true));
+        wl!(rv, "{}", u8info("Secret", k, true));
+        wl!(rv, "{}", u8info("Associated data", x, true));
+        w!(rv, "{}", h0 + &blocks);
+        wl!(rv, "{}", u8info("Tag", &out, false));
 
         if expected.trim() != rv.trim() {
             println!("{}", rv);
