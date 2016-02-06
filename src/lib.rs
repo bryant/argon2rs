@@ -96,6 +96,12 @@ pub enum ParamErr {
 }
 
 impl Argon2 {
+    /// Returns an `Argon2` set to default input parameters. See below for a
+    /// description of these parameters.
+    pub fn default(v: Variant) -> Argon2 {
+        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v).ok().unwrap()
+    }
+
     /// Use this to customize Argon2's time and memory cost parameters.
     /// Adjusting any of these will affect the value of the final hash result.
     ///
@@ -129,12 +135,6 @@ impl Argon2 {
                 variant: variant,
             })
         }
-    }
-
-    /// Returns an `Argon2` set to default input parameters. See below for a
-    /// description of these parameters.
-    pub fn default(v: Variant) -> Argon2 {
-        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v).ok().unwrap()
     }
 
     /// Runs the selected Argon2 variant over provided inputs, writing the final
