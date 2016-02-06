@@ -262,7 +262,7 @@ pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     out
 }
 
-/// Convenience wrapper around Argon2i for the majority of use cases where only
+/// Convenience wrapper around Argon2d for the majority of use cases where only
 /// a password and salt are supplied. Note that a salt between 8 and 2^32-1
 /// bytes must be provided.
 pub fn argon2d_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
