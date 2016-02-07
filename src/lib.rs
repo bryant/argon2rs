@@ -99,7 +99,7 @@ impl Argon2 {
     /// Returns an `Argon2` set to default input parameters. See below for a
     /// description of these parameters.
     pub fn default(v: Variant) -> Argon2 {
-        Argon2::new(defaults::PASSES, defaults::LANES, defaults::LANES, v)
+        Argon2::new(defaults::PASSES, defaults::LANES, defaults::KIB, v)
             .ok()
             .unwrap()
     }
