@@ -452,7 +452,7 @@ fn p_col(col: usize, b: &mut Block) {
 }
 
 #[cfg(test)]
-mod kat_tests {
+mod tests {
     use std::fs::File;
     use std::io::Read;
     use super::{Argon2, block};
@@ -544,8 +544,8 @@ mod kat_tests {
     }
 
     #[test]
-    fn test_argon2i() { compare_kats("kats/argon2i", super::Variant::Argon2i); }
+    fn argon2i_kat() { compare_kats("kats/argon2i", super::Variant::Argon2i); }
 
     #[test]
-    fn test_argon2d() { compare_kats("kats/argon2d", super::Variant::Argon2d); }
+    fn argon2d_kat() { compare_kats("kats/argon2d", super::Variant::Argon2d); }
 }
