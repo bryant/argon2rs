@@ -6,10 +6,9 @@ use std::env;
 use std::io::{Read, stdin};
 
 const CLI_TOOL_SALT_LEN: usize = 16;
-const CLI_TOOL_HASH_LEN: usize = 32;
 
 fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
-                 -> [u8; CLI_TOOL_HASH_LEN] {
+                 -> [u8; argon2rs::defaults::LENGTH] {
     assert!(salt.len() <= CLI_TOOL_SALT_LEN && passes > 0 && logkib > 0 &&
             lanes > 0);
     let a = Argon2::new(passes, lanes, 1 << logkib, Variant::Argon2i)
@@ -20,7 +19,7 @@ fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
         *k = v;
     }
 
-    let mut out = [0 as u8; CLI_TOOL_HASH_LEN];
+    let mut out = [0 as u8; argon2rs::defaults::LENGTH];
     a.hash(&mut out, msg, &s, &[], &[]);
     out
 }
@@ -38,8 +37,8 @@ fn main() {
 
     if args.len() != 5 {
         println!("Usage: {} passes lanes logkib salt", args[0]);
-        println!("where salt.len() <= 16, memory usage is 2^logkib, and \
-                  plaintext is read from stdin.");
+        println!("where salt.len() <= {}, memory usage is 2^logkib, and \
+                  plaintext is read from stdin.", CLI_TOOL_SALT_LEN);
         return;
     }
 
