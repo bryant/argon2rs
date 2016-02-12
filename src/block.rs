@@ -74,3 +74,13 @@ impl Matrix {
 
     pub fn iter(&self) -> Iter<Vec<Block>> { self.0.iter() }
 }
+
+impl Drop for Matrix {
+    fn drop(&mut self) {
+        for lane in self.0.iter_mut() {
+            for blk in lane.iter_mut() {
+                *blk = zero();
+            }
+        }
+    }
+}
