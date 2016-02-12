@@ -38,7 +38,7 @@ fn main() {
 
     if args.len() != 5 {
         println!("Usage: {} passes lanes logkib salt", args[0]);
-        println!("where salt.len() >= 16, memory usage is 2^logkib, and \
+        println!("where salt.len() <= 16, memory usage is 2^logkib, and \
                   plaintext is read from stdin.");
         return;
     }
