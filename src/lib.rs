@@ -28,7 +28,7 @@ pub mod defaults {
     pub const PASSES: u32 = 3;
     pub const KIB: u32 = 4096;
     pub const LANES: u32 = 1;
-    pub const LENGTH: usize = 64;
+    pub const LENGTH: usize = 32;
 }
 
 fn split_u64(n: u64) -> (u32, u32) {

@@ -44,8 +44,7 @@ outputs:
 
 ```
 argon2i("argon2i", "delicious"):
-8026dbe9eb1a2318722ec948a828710b1dbb32a3091b2d7e8e1d3b900e4e96212c0f594e12be7b3
-474d97568b3d6f015c1f1f7ae6fa69261c53993f0a8dd94e9
+e254b28d820f26706a19309f1888cefd5d48d91384f35dc2e3fe75c3a8f665a6
 ```
 
 There are two variants of Argon2 that differ in the manner by which reference
