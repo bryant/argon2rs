@@ -1,17 +1,11 @@
-#![feature(repr_simd, platform_intrinsics)]
-
 extern crate blake2_rfc;
 extern crate crossbeam;
-
-mod octword;
-
-#[macro_use]
-mod block;
 
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;
 use octword::u64x2;
 use block::{ARGON2_BLOCK_BYTES, Block, Matrix};
+use block;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Variant {
@@ -455,7 +449,8 @@ fn p_col(col: usize, b: &mut Block) {
 mod tests {
     use std::fs::File;
     use std::io::Read;
-    use super::{Argon2, block};
+    use super::Argon2;
+    use block;
     use std::fmt::Write;
 
     // from genkat.c
