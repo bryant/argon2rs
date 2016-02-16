@@ -290,7 +290,7 @@ fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
         false
     } else {
         let rv = xs.iter().zip(ys.iter()).fold(0, |rv, (x, y)| rv | (x ^ y));
-        (1 & rv - 1 >> 8) - 1 == 0  // this kills the optimizer.
+        (1 & rv as u32 - 1 >> 8) - 1 == 0  // this kills the optimizer.
     }
 }
 
