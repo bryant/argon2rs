@@ -246,6 +246,11 @@ impl Argon2 {
     fn prev(&self, n: u32) -> u32 {
         if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
+
+    /// Provides read-only access to `(variant, kibbibytes, passes, lanes)`.
+    pub fn params(&self) -> (Variant, u32, u32, u32) {
+        (self.variant, self.kib, self.passes, self.lanes)
+    }
 }
 
 /// Convenience wrapper around Argon2i for the majority of use cases where only
