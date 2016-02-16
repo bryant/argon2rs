@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
     fn err<T>(&self) -> Parsed<T> { Err(self.pos) }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DecodeError {
     ParseError(usize),
     InvalidParams(ParamErr),
@@ -329,6 +329,23 @@ mod test {
         let v = Verifier::from_u8(ENCODED).unwrap();
         assert_eq!(v.verify(b"argon2i!"), true);
         assert_eq!(v.verify(b"nope"), false);
+    }
+
+    #[test]
+    fn bad_encoded() {
+        use super::DecodeError::*;
+        use argon2::ParamErr::*;
+        let cases: [(&'static [u8], super::DecodeError); 4] =
+            [(b"$argon2y$m=4096", ParseError(7)),
+             (b"$argon2i$m=-2,t=-4,p=-4$aaaaaaaa$ffffff", ParseError(11)),
+             (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(30)),
+             (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff",
+              InvalidParams(TooFewPasses))];
+        for &(case, err) in cases.iter() {
+            let v = Verifier::from_u8(case);
+            assert!(v.is_err());
+            assert_eq!(v.err().unwrap(), err);
+        }
     }
 
     #[bench]

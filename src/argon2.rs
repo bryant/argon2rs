@@ -83,7 +83,7 @@ pub struct Argon2 {
     variant: Variant,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ParamErr {
     TooFewPasses,
     TooFewLanes,
