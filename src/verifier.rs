@@ -322,6 +322,8 @@ mod test {
 
     #[test]
     fn test_verify() {
-        Verifier::from_u8(ENCODED).unwrap().verify(b"argon2i!");
+        let v = Verifier::from_u8(ENCODED).unwrap();
+        assert_eq!(v.verify(b"argon2i!"), true);
+        assert_eq!(v.verify(b"nope"), false);
     }
 }
