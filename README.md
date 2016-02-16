@@ -58,7 +58,11 @@ hashing.
 
 - [x] Parallelize.
 - [x] Incorporate SIMD into compression function.
+- [x] Zero-on-drop trait for sensitive(s): `Matrix`
+- [x] Constant-time verification API.
 - [ ] Support NEON and SIMD on other arches.
+- [ ] Fuzz.
+- [ ] `mod bench`.
 
 ## LICENSE
 
