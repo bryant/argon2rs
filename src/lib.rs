@@ -1,4 +1,4 @@
-#![feature(repr_simd, platform_intrinsics)]
+#![feature(repr_simd, platform_intrinsics, test)]
 
 mod octword;
 #[macro_use]

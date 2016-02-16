@@ -294,7 +294,8 @@ fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{Verifier, base64_no_pad, debase64_no_pad};
+    extern crate test;
+    use super::{Verifier, base64_no_pad, constant_eq, debase64_no_pad};
 
     const BASE64_CASES: [(&'static [u8], &'static [u8]); 5] =
         [(b"any carnal pleasure.", b"YW55IGNhcm5hbCBwbGVhc3VyZS4"),
@@ -306,6 +307,7 @@ mod test {
     const ENCODED: &'static [u8] =
         b"$argon2i$m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
           $Eh1lW3mjkhlMLRQdE7vXZnvwDXSGLBfXa6BGK4a1J3s";
+
     #[test]
     fn test_base64_no_pad() {
         for &(s, exp) in BASE64_CASES.iter() {
@@ -325,5 +327,30 @@ mod test {
         let v = Verifier::from_u8(ENCODED).unwrap();
         assert_eq!(v.verify(b"argon2i!"), true);
         assert_eq!(v.verify(b"nope"), false);
+    }
+
+    #[bench]
+    fn test_constant_eq0(b: &mut test::Bencher) {
+        let lhs = (0..255).cycle().take(9001).collect::<Vec<u8>>();
+        let rhs = (0..255)
+                      .cycle()
+                      .skip(1)
+                      .take(9001)
+                      .map(|c: u8| c.wrapping_sub(1))
+                      .collect::<Vec<u8>>();
+        b.iter(|| constant_eq(&lhs[..], &rhs[..]));
+    }
+
+    #[bench]
+    fn test_constant_eq1(b: &mut test::Bencher) {
+        let lhs = (0..255).cycle().take(9001).collect::<Vec<u8>>();
+        let mut rhs = (0..255)
+                          .cycle()
+                          .skip(1)
+                          .take(9001)
+                          .map(|c: u8| c.wrapping_sub(1))
+                          .collect::<Vec<u8>>();
+        rhs[0] += 24;
+        b.iter(|| constant_eq(&lhs[..], &rhs[..]));
     }
 }
