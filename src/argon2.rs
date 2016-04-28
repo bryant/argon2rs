@@ -138,11 +138,12 @@ impl Argon2 {
     /// hash to the byte slice `out`. Note that the output length is assumed to
     /// be `out.len()` and must be between 4 and 2^32 - 1. The inputs are:
     ///
-    /// `p`, the byte slice containing, typically, the plaintext;
+    /// `p`, the byte slice containing, typically, the plaintext (length 0 to
+    /// 2^32-1);
     ///
-    /// a salt `s` of length 8 bytes or greater;
+    /// a salt `s` of length 8 to 2^32-1 bytes;
     ///
-    /// `k`, an optional (length zero or greater) secret value; and
+    /// `k`, an optional (length 0 to 32 bytes) secret value; and
     ///
     /// `x`, optional associated data length 0 to 2^32 - 1.
     pub fn hash(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8]) {
@@ -157,8 +158,11 @@ impl Argon2 {
     {
         assert!(out.len() >= 4);
         assert!(out.len() <= 0xffffffff);
+        assert!(p.len() <= 0xffffffff);
         assert!(s.len() >= 8);
         assert!(s.len() <= 0xffffffff);
+        assert!(k.len() <= 32);
+        assert!(x.len() <= 0xffffffff);
 
         let mut blocks = Matrix::new(self.lanes, self.lanelen);
         let h0 = h0(self.lanes, out.len() as u32, self.kib, self.passes,
