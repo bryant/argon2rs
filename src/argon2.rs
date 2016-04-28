@@ -87,6 +87,7 @@ pub struct Argon2 {
 pub enum ParamErr {
     TooFewPasses,
     TooFewLanes,
+    TooManyLanes,
     MinKiB(u64),
 }
 
@@ -108,7 +109,7 @@ impl Argon2 {
     /// `lanes`: The degree of parallelism by which memory is filled during hash
     /// computation. Setting this to N instructs argon2rs to partition the block
     /// matrix into N lanes, simultaneously filling each lane in parallel with N
-    /// threads.
+    /// threads. Must be between 1 and 2^24 - 1.
     ///
     /// `kib`: Desired total size of block matrix, in kibbibytes (1 KiB = 1024
     /// bytes). Increasing this forces hashing to use more memory in order to
@@ -121,6 +122,8 @@ impl Argon2 {
             Result::Err(ParamErr::TooFewPasses)
         } else if lanes < 1 {
             Result::Err(ParamErr::TooFewLanes)
+        } else if 0x00ffffff < lanes {
+            Result::Err(ParamErr::TooManyLanes)
         } else if (kib as u64) < 8 * lanes as u64 {
             Result::Err(ParamErr::MinKiB(8 * lanes as u64))
         } else {
