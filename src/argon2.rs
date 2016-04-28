@@ -156,11 +156,9 @@ impl Argon2 {
         where F: FnMut(&[u8]) -> (),
               G: FnMut(u32, &Matrix) -> ()
     {
-        assert!(out.len() >= 4);
-        assert!(out.len() <= 0xffffffff);
+        assert!(4 <= out.len() && out.len() <= 0xffffffff);
         assert!(p.len() <= 0xffffffff);
-        assert!(s.len() >= 8);
-        assert!(s.len() <= 0xffffffff);
+        assert!(8 <= s.len()  && s.len() <= 0xffffffff);
         assert!(k.len() <= 32);
         assert!(x.len() <= 0xffffffff);
 
