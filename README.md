@@ -13,14 +13,14 @@ Via cargo:
 
 ```bash
 $ cd $PROJECT_ROOT
-$ cargo install --features "simd threaded"
+$ cargo install --features "simd"
 ```
 
 From git:
 
 ```bash
 $ git clone https://github.com/bryant/argon2rs $ARGON_DIR && cd $ARGON_DIR
-$ cargo build --features "simd threaded"
+$ cargo build --features "simd"
 ```
 
 ## Usage
