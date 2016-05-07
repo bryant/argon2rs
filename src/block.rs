@@ -36,11 +36,12 @@ impl<'a> BitXorAssign<&'a Block> for Block {
     }
 }
 
-impl<'a, 'b> BitXorAssign<(&'a Block, &'b Block)> for Block {
+impl<'a, 'b, 'c> BitXorAssign<(&'a Block, &'b Block, &'c Block)> for Block {
     #[inline(always)]
-    fn bitxor_assign(&mut self, (a, b): (&Block, &Block)) {
-        for (d, (l, r)) in self.0.iter_mut().zip(a.0.iter().zip(b.0.iter())) {
-            *d = *d ^ *l ^ *r;
+    fn bitxor_assign(&mut self, (a, b, c): (&Block, &Block, &Block)) {
+        let ch = a.0.iter().zip(b.0.iter().zip(c.0.iter()));
+        for (d, (l, (r, o))) in self.0.iter_mut().zip(ch) {
+            *d = *d ^ *l ^ *r ^ *o;
         }
     }
 }
