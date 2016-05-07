@@ -516,7 +516,7 @@ fn p_col(col: usize, b: &mut Block) {
 mod tests {
     use std::fs::File;
     use std::io::Read;
-    use super::Argon2;
+    use super::{Argon2,ARGON2_VERSION};
     use block;
     use std::fmt::Write;
 
@@ -588,7 +588,9 @@ mod tests {
         let (h0, blocks) = run_and_collect(&a2, &mut out, p, s, k, x);
 
         let mut rv = String::new();
-        wl!(rv, "======================================={:?}", a2.variant);
+        wl!(rv, "=======================================");
+        wl!(rv, "{:?} version number {}", a2.variant, ARGON2_VERSION);
+        wl!(rv, "=======================================");
         w!(rv, "Memory: {} KiB, Iterations: {}, ", a2.kib, a2.passes);
         w!(rv, "Parallelism: {} lanes, ", a2.lanes);
         wl!(rv, "Tag length: {} bytes", out.len());
