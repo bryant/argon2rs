@@ -1,18 +1,19 @@
+#[cfg(feature = "simd")]
 use std::mem::transmute;
 use std::ops::{Add, BitXor, Mul};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(simd)]
+#[cfg_attr(feature = "simd", repr(simd))]
 #[allow(non_camel_case_types)]
 pub struct u64x2(pub u64, pub u64);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(simd)]
+#[cfg_attr(feature = "simd", repr(simd))]
 #[allow(non_camel_case_types)]
 struct u32x4(u32, u32, u32, u32);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[repr(simd)]
+#[cfg_attr(feature = "simd", repr(simd))]
 #[allow(non_camel_case_types)]
 struct u8x16(u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8, u8);
 
