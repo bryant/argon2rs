@@ -1,6 +1,9 @@
 argon2rs
 ========
 
+[![Build
+Status](https://travis-ci.org/bryant/argon2rs.svg?branch=master)](https://travis-ci.org/bryant/argon2rs)
+
 This is a purely Rust-based library that provides both variants of the
 state-of-the-art Argon2 hashing algorithm, suitable for password hashing and
 password-based key derivation.
