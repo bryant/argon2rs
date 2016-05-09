@@ -96,7 +96,8 @@ type Parsed<T> = Result<T, usize>;
 impl<'a> Parser<'a> {
     fn expect(&mut self, exp: &[u8]) -> Parsed<()> {
         assert!(self.pos < self.enc.len());
-        if &self.enc[self.pos..self.pos + exp.len()] != exp {
+        if self.enc.len() - self.pos < exp.len() ||
+           &self.enc[self.pos..self.pos + exp.len()] != exp {
             self.err()
         } else {
             self.pos += exp.len();
@@ -341,7 +342,9 @@ mod test {
               (b"$argon2i$m=-2,t=-4,p=-4$aaaaaaaa$ffffff", ParseError(11)),
               (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(30)),
               (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff",
-               InvalidParams(TooFewPasses))];
+               InvalidParams(TooFewPasses)),
+              // intentionally fail Verifier::expect with undersized input
+              (b"$argon2i$m", ParseError(8))];
         for &(case, err) in cases.iter() {
             let v = Verifier::from_u8(case);
             assert!(v.is_err());
