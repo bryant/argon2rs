@@ -228,6 +228,7 @@ impl Encoded {
             _ => unreachable!(),
         };
 
+        try_unit!(p.expect(b"$v=19"));
         try_unit!(p.expect(b"$m="));
         let kib = try!(p.read_u32());
         try_unit!(p.expect(b",t="));
@@ -292,7 +293,7 @@ impl Encoded {
             _ => String::new(),
         };
         let (var, m, t, p) = self.params.params();
-        format!("$argon2{}$m={},t={},p={}{}{}${}${}", vcode(var), m, t, p,
+        format!("$argon2{}$v=19,m={},t={},p={}{}{}${}${}", vcode(var), m, t, p,
                 k_, x_, b64(&self.salt[..]), b64(&self.hash))
             .into_bytes()
     }
