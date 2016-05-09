@@ -373,8 +373,8 @@ mod test {
          (b"any carnal pleas", b"YW55IGNhcm5hbCBwbGVhcw")];
 
     const ENCODED: &'static [u8] =
-        b"$argon2i$m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
-          $Eh1lW3mjkhlMLRQdE7vXZnvwDXSGLBfXa6BGK4a1J3s";
+        b"$argon2i$v=19$m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
+          $AvsXI+N78kGHzeGwzz0VTjfBdl7MmgvBGfJ/XXyqLbA";
 
     #[test]
     fn test_base64_no_pad() {
@@ -402,11 +402,14 @@ mod test {
         use super::DecodeError::*;
         use argon2::ParamErr::*;
         let cases: &[(&'static [u8], super::DecodeError)] =
-            &[(b"$argon2y$m=4096", ParseError(7)),
-              (b"$argon2i$m=-2,t=-4,p=-4$aaaaaaaa$ffffff", ParseError(11)),
-              (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(30)),
-              (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff",
+            &[(b"$argon2y$v=19$m=4096", ParseError(7)),
+              (b"$argon2i$v=19$m=-2,t=-4,p=-4$aaaaaaaa$ffffff",
+               ParseError(16)),
+              (b"$argon2i$v=19$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(35)),
+              (b"$argon2i$v=19$m=0,t=0,p=0$aaaaaaaa$ffffff",
                InvalidParams(TooFewPasses)),
+              // fail with missing version field
+              (b"$argon2i$m=0", ParseError(8)),
               // intentionally fail Encoded::expect with undersized input
               (b"$argon2i$m", ParseError(8))];
         for &(case, err) in cases.iter() {
