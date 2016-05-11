@@ -1,5 +1,4 @@
 #![cfg_attr(feature = "simd", feature(repr_simd, platform_intrinsics))]
-#![cfg_attr(test, feature(test))]
 
 mod octword;
 #[macro_use]
