@@ -286,7 +286,7 @@ impl Verifier {
 }
 
 #[inline(never)]
-fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
+pub fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
     if xs.len() != ys.len() {
         false
     } else {
