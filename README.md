@@ -63,25 +63,40 @@ hashing.
 - [x] Incorporate SIMD into compression function.
 - [x] Zero-on-drop trait for sensitive(s): `Matrix`
 - [x] Constant-time verification API.
+- [x] Benchmarks.
 - [ ] Support NEON and SIMD on other arches.
 - [ ] Fuzz.
-- [ ] `mod bench`.
 
 ## LICENSE
 
 MIT.
 
-## Random Benchmark
+## Benchmarks
 
-Compared with the [reference impl](https://github.com/p-h-c/phc-winner-argon2)
-written in heavily hand-optimized C:
+Our primary benchmark is a single-threaded run of Argon2i with default
+parameters against the [reference implementation](
+https://github.com/p-h-c/phc-winner-argon2). In order to compile and run this,
+first pull in the C sources:
 
 ```bash
-~/phc-winner-argon2$ echo -n "asic-resistant but" | time -v ./argon2 'still fast' -t 80 -m 16 -p 9 2>&1 > /dev/null | grep 'wall clock'
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.46
+$ git submodule init
+$ git submodule update benches/cargon/phc-winner-argon2
+```
 
-~/argon2rs$ echo -n "asic-resistant but" | time -v ./target/release/examples/cli 80 9 16 'still fast' 2>&1 > /dev/null | grep 'wall clock'
-        Elapsed (wall clock) time (h:mm:ss or m:ss): 0:02.88
+and then benchmark with Cargo as usual:
+
+```
+$ cargo bench --features=simd
+
+# output trimmed for brevity
+
+     Running target/release/versus_cargon-b5955411e1594c85
+
+running 2 tests
+test bench_argon2rs_i ... bench:  14,320,903 ns/iter (+/- 3,025,492)
+test bench_cargon_i   ... bench:  11,999,153 ns/iter (+/- 112,568)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
 ```
 
 ## References
