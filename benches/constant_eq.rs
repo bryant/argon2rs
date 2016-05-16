@@ -1,5 +1,6 @@
 // demonstrates (to some degree of certainty modulo process scheduling) that the
 // run time of `verifier::constant_eq` is independent of its inputs.
+#![cfg(nightly)]
 #![feature(test)]
 
 extern crate test;
