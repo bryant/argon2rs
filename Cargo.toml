@@ -16,3 +16,6 @@ simd = ["blake2-rfc/simd_asm"]
 [dependencies]
 blake2-rfc = "0.2.16"
 crossbeam = "0.2.5"
+
+[dev-dependencies]
+cargon = { path = "benches/cargon", version = "0.0.1" }
