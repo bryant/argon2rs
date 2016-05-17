@@ -1,0 +1,11 @@
+[package]
+name = "cargon"
+version = "0.0.1"
+links = "argon2"
+build = "build.rs"
+
+[lib]
+path = "lib.rs"
+
+[build-dependencies]
+gcc = "*"
