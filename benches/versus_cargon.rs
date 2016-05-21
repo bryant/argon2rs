@@ -54,3 +54,22 @@ fn mk_cargon(a2: Argon2, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8])
         flags: cargon::ARGON2_FLAG_CLEAR_MEMORY,
     }
 }
+
+#[test]
+fn ensure_identical_hashes() {
+    fn comp(lanes: u32) {
+        let mut outrs = [0; defaults::LENGTH];
+        let mut outca = [0; defaults::LENGTH];
+        let a2 = Argon2::new(defaults::PASSES, lanes, defaults::KIB, Argon2i)
+            .unwrap();
+        a2.hash(&mut outrs, PASSWORD, SALT, &[], &[]);
+
+        let mut ctx = mk_cargon(a2, &mut outca, PASSWORD, SALT, &[], &[]);
+        unsafe {
+            cargon::argon2_ctx(&mut ctx, Argon2i as usize);
+        }
+        assert_eq!(outrs, outca);
+    }
+    comp(1);
+    comp(4);
+}
