@@ -23,28 +23,34 @@ fn bench_argon2rs_i(b: &mut test::Bencher) {
 
 #[bench]
 fn bench_cargon_i(b: &mut test::Bencher) {
+    let a2 = Argon2::default(Argon2i);
     let mut out = [0; defaults::LENGTH];
-    let mut ctx = cargon::CargonContext {
+    let mut ctx = mk_cargon(a2, &mut out, PASSWORD, SALT, &[], &[]);
+    b.iter(|| unsafe { cargon::argon2_ctx(&mut ctx, Argon2i as usize) });
+}
+
+fn mk_cargon(a2: Argon2, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8])
+             -> cargon::CargonContext {
+    let (_, kib, passes, lanes) = a2.params();
+    cargon::CargonContext {
         out: out.as_mut_ptr(),
         outlen: out.len() as u32,
-        pwd: PASSWORD.as_ptr(),
-        pwdlen: PASSWORD.len() as u32,
-        salt: SALT.as_ptr(),
-        saltlen: SALT.len() as u32,
-        secret: ptr::null(),
-        secretlen: 0,
-        ad: ptr::null(),
-        adlen: 0,
+        pwd: p.as_ptr(),
+        pwdlen: p.len() as u32,
+        salt: s.as_ptr(),
+        saltlen: s.len() as u32,
+        secret: k.as_ptr(),
+        secretlen: k.len() as u32,
+        ad: x.as_ptr(),
+        adlen: x.len() as u32,
 
-        t_cost: defaults::PASSES,
-        m_cost: defaults::KIB,
-        lanes: defaults::LANES,
-        threads: defaults::LANES,
+        t_cost: passes,
+        m_cost: kib,
+        lanes: lanes,
+        threads: lanes,
         version: 0x10,
         allocate_fptr: ptr::null(),
         deallocate_fptr: ptr::null(),
         flags: cargon::ARGON2_FLAG_CLEAR_MEMORY,
-    };
-
-    b.iter(|| unsafe { cargon::argon2_ctx(&mut ctx, Argon2i as usize) });
+    }
 }
