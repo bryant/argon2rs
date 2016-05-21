@@ -15,5 +15,8 @@ fn main() {
         cfg.file(srcpath);
     }
 
-    cfg.include(cargon_root.join("include")).compile("libargon2.a");
+    cfg.include(cargon_root.join("include"))
+       .debug(true)
+       .flag("-march=native")
+       .compile("libargon2.a");
 }
