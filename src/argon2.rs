@@ -170,11 +170,15 @@ impl Argon2 {
                     ARGON2_VERSION, self.variant, p, s, k, x);
         h0_fn(&h0);  // kats
 
-        crossbeam::scope(|sc| {
-            for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                sc.spawn(move || self.fill_first_slice(bref, h0, l));
-            }
-        });
+        if self.lanes > 1 {
+            crossbeam::scope(|sc| {
+                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
+                    sc.spawn(move || self.fill_first_slice(bref, h0, l));
+                }
+            });
+        } else {
+            self.fill_first_slice(&mut blocks, h0, 0);
+        }
 
         // finish first pass. slices have to be filled in sync.
         self.fill_segment(0, 1, &mut blocks);
@@ -209,6 +213,13 @@ impl Argon2 {
     //  - Filling is done segment-by-segment.
     #[inline(always)]
     fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix) {
+        if self.lanes == 1 {
+            for slice in slice_begin..SLICES_PER_LANE {
+                self.fill_slice(blocks, pass, 0, slice, 0);
+            }
+            return;
+        }
+
         for slice in slice_begin..SLICES_PER_LANE {
             crossbeam::scope(|sc| {
                 for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
