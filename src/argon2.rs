@@ -177,27 +177,45 @@ impl Argon2 {
         });
 
         // finish first pass. slices have to be filled in sync.
-        for slice in 1..4 {
-            crossbeam::scope(|sc| {
-                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.spawn(move || self.fill_slice(bref, 0, l, slice, 0));
-                }
-            });
-        }
+        self.fill_segment(0, 1, &mut blocks);
         pass_fn(0, &blocks);  // kats
 
         for p in 1..self.passes {
-            for s in 0..SLICES_PER_LANE {
-                crossbeam::scope(|sc| {
-                    for (l, b) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                        sc.spawn(move || self.fill_slice(b, p, l, s, 0));
-                    }
-                });
-            }
+            self.fill_segment(p, 0, &mut blocks);
             pass_fn(p, &blocks);  // kats
         }
 
         h_prime(out, block::as_u8(&xor_all(&blocks.col(self.lanelen - 1))));
+    }
+
+    // `Matrix` is an array of 1-KiB blocks and organized as follows:
+    //
+    //     +------------------------ `lanelen` columns ------------------------+
+    //     |                                 +-----------------+               |
+    //     +--- slice ---+   +--- slice ---+ | +--- slice ---+ | +--- slice ---+
+    //     |             |   |             | | |             | | |             |
+    //  +- b b b b ...   b   b b b b ...   b | b b b b ...   b | b b b b ...   b
+    //  |  b                                 |                 |
+    //  |  ...                               |                 |
+    //  +- b b b b ...   b   b b b b ...   b | b b b b ...   b | b b b b ...   b
+    //  |                                    |                 |
+    //  +--`lane` rows                       +---- segment ----+
+    //
+    //  where each `b` represents a 1-KiB block.
+    //
+    //  Some invariants:
+    //  - There are always four slices.
+    //  - `lanelen * lane = self.kib`.
+    //  - Filling is done segment-by-segment.
+    #[inline(always)]
+    fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix) {
+        for slice in slice_begin..SLICES_PER_LANE {
+            crossbeam::scope(|sc| {
+                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
+                    sc.spawn(move || self.fill_slice(bref, pass, l, slice, 0));
+                }
+            });
+        }
     }
 
     fn fill_first_slice(&self, blks: &mut Matrix, mut h0: [u8; 72], lane: u32) {
