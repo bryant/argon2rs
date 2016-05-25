@@ -29,6 +29,21 @@ fn bench_cargon_i(b: &mut test::Bencher) {
     b.iter(|| unsafe { cargon::argon2_ctx(&mut ctx, Argon2i as usize) });
 }
 
+#[bench]
+fn bench_argon2rs_threaded(b: &mut test::Bencher) {
+    let a2 = Argon2::new(defaults::PASSES, 4, defaults::KIB, Argon2i).unwrap();
+    let mut out = [0; defaults::LENGTH];
+    b.iter(|| a2.hash(&mut out, PASSWORD, SALT, &[], &[]));
+}
+
+#[bench]
+fn bench_cargon_threaded(b: &mut test::Bencher) {
+    let a2 = Argon2::new(defaults::PASSES, 4, defaults::KIB, Argon2i).unwrap();
+    let mut out = [0; defaults::LENGTH];
+    let mut ctx = mk_cargon(a2, &mut out, PASSWORD, SALT, &[], &[]);
+    b.iter(|| unsafe { cargon::argon2_ctx(&mut ctx, Argon2i as usize) });
+}
+
 fn mk_cargon(a2: Argon2, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8])
              -> cargon::CargonContext {
     let (_, kib, passes, lanes) = a2.params();
