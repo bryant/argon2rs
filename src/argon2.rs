@@ -1,5 +1,5 @@
 extern crate blake2_rfc;
-extern crate crossbeam;
+extern crate scoped_threadpool;
 
 use std::mem;
 use self::blake2_rfc::blake2b::Blake2b;
@@ -170,10 +170,11 @@ impl Argon2 {
                     ARGON2_VERSION, self.variant, p, s, k, x);
         h0_fn(&h0);  // kats
 
+        let mut pool = scoped_threadpool::Pool::new(self.lanes);
         if self.lanes > 1 {
-            crossbeam::scope(|sc| {
+            pool.scoped(|sc| {
                 for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.spawn(move || self.fill_first_slice(bref, h0, l));
+                    sc.execute(move || self.fill_first_slice(bref, h0, l));
                 }
             });
         } else {
@@ -181,11 +182,11 @@ impl Argon2 {
         }
 
         // finish first pass. slices have to be filled in sync.
-        self.fill_segment(0, 1, &mut blocks);
+        self.fill_segment(0, 1, &mut blocks, &mut pool);
         pass_fn(0, &blocks);  // kats
 
         for p in 1..self.passes {
-            self.fill_segment(p, 0, &mut blocks);
+            self.fill_segment(p, 0, &mut blocks, &mut pool);
             pass_fn(p, &blocks);  // kats
         }
 
@@ -212,7 +213,8 @@ impl Argon2 {
     //  - `lanelen * lane = self.kib`.
     //  - Filling is done segment-by-segment.
     #[inline(always)]
-    fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix) {
+    fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix,
+                    pool: &mut scoped_threadpool::Pool) {
         if self.lanes == 1 {
             for slice in slice_begin..SLICES_PER_LANE {
                 self.fill_slice(blocks, pass, 0, slice, 0);
@@ -221,9 +223,9 @@ impl Argon2 {
         }
 
         for slice in slice_begin..SLICES_PER_LANE {
-            crossbeam::scope(|sc| {
+            pool.scoped(|sc| {
                 for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.spawn(move || self.fill_slice(bref, pass, l, slice, 0));
+                    sc.execute(move || self.fill_slice(bref, pass, l, slice, 0));
                 }
             });
         }
