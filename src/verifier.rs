@@ -1,4 +1,5 @@
-use std::str;
+use std::{fmt, str};
+use std::error::Error;
 use argon2::{Argon2, ParamErr, Variant, defaults};
 
 macro_rules! maybe {
@@ -163,6 +164,27 @@ impl<'a> Parser<'a> {
 pub enum DecodeError {
     ParseError(usize),
     InvalidParams(ParamErr),
+}
+
+impl fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::DecodeError::*;
+        match *self {
+            ParseError(pos) => write!(f, "Parse error at position {}", pos),
+            InvalidParams(ref perr) => {
+                write!(f, "Invalid hash parameters given by encoded: {}", perr)
+            }
+        }
+    }
+}
+
+impl Error for DecodeError {
+    fn description(&self) -> &str {
+        match *self {
+            DecodeError::ParseError(_) => "Hash string parse error.",
+            DecodeError::InvalidParams(ref perr) => perr.description(),
+        }
+    }
 }
 
 pub struct Verifier {
