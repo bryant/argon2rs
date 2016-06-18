@@ -52,10 +52,10 @@ e254b28d820f26706a19309f1888cefd5d48d91384f35dc2e3fe75c3a8f665a6
 
 There are two variants of Argon2 that differ in the manner by which reference
 indices are computed during block-filling rounds. Argon2d does this in a faster
-but data-dependent fashion that could be vulnerable to side-channel [attacks][1],
-whereas Argon2i ("i" denoting independence from plaintext input) works slower
-but is immune to such attacks and is therefore the preferred choice for password
-hashing.
+but data-dependent fashion that could be vulnerable to side-channel
+[attacks][1], whereas Argon2i ("i" denoting independence from plaintext input)
+works slower but is immune to such attacks and is therefore the preferred choice
+for password hashing.
 
 ## TODO
 
@@ -73,10 +73,9 @@ MIT.
 
 ## Benchmarks
 
-Our primary benchmark is a single-threaded run of Argon2i with default
-parameters against the [reference implementation](
-https://github.com/p-h-c/phc-winner-argon2). In order to compile and run this,
-first pull in the C sources:
+Our primary benchmarks are single- and multi-threaded runs of Argon2i with
+default parameters against the [reference implementation][2]. In order to
+compile and run this, first pull in the C sources:
 
 ```bash
 $ git submodule init
@@ -86,15 +85,22 @@ $ git submodule update benches/cargon/phc-winner-argon2
 and then benchmark with Cargo as usual:
 
 ```
+$ rustc --version
+rustc 1.11.0-dev (4b240fe96 2016-06-08)
+
+$ export RUSTFLAGS='-C target-feature=+avx'
 $ cargo bench --features=simd
 
 # output trimmed for brevity
 
      Running target/release/versus_cargon-b5955411e1594c85
 
-running 2 tests
-test bench_argon2rs_i ... bench:  14,320,903 ns/iter (+/- 3,025,492)
-test bench_cargon_i   ... bench:  11,999,153 ns/iter (+/- 112,568)
+running 5 tests
+test ensure_identical_hashes ... ignored
+test bench_argon2rs_i        ... bench:   9,547,031 ns/iter (+/- 15,964)
+test bench_argon2rs_threaded ... bench:   4,584,163 ns/iter (+/- 398,803)
+test bench_cargon_i          ... bench:  10,013,015 ns/iter (+/- 177,482)
+test bench_cargon_threaded   ... bench:   3,753,022 ns/iter (+/- 48,688)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
 ```
@@ -102,4 +108,7 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
 ## References
 
 ["Argon2: The Memory-Hard Function for Password Hashing and Other
-Applications"](https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf)
+Applications"][1]
+
+[1]: https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf
+[2]: https://github.com/p-h-c/phc-winner-argon2
