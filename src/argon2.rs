@@ -1,7 +1,8 @@
 extern crate blake2_rfc;
 extern crate scoped_threadpool;
 
-use std::mem;
+use std::{fmt, mem};
+use std::error::Error;
 use self::blake2_rfc::blake2b::Blake2b;
 use octword::u64x2;
 use block::{ARGON2_BLOCK_BYTES, Block, Matrix};
@@ -89,6 +90,31 @@ pub enum ParamErr {
     TooFewLanes,
     TooManyLanes,
     MinKiB(u64),
+}
+
+impl fmt::Display for ParamErr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use ParamErr::*;
+        match *self {
+            TooFewPasses | TooFewLanes | TooManyLanes => {
+                write!(f, "{}", self.description())
+            }
+            MinKiB(k) => write!(f, "Memory parameter must be >= {} KiB.", k),
+        }
+    }
+}
+
+impl Error for ParamErr {
+    fn description(&self) -> &str {
+        use ParamErr::*;
+        match *self {
+            TooFewPasses => "Argon2 requires one or more passes to be run.",
+            TooFewLanes | TooManyLanes => {
+                "The number of lanes must be between one and 2^24 - 1."
+            }
+            MinKiB(_) => "Specified size of block matrix was too small.",
+        }
+    }
 }
 
 impl Argon2 {
