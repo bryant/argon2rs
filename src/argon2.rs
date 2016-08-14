@@ -31,11 +31,17 @@ fn split_u64(n: u64) -> (u32, u32) {
 }
 
 fn xor_all(blocks: &Vec<&Block>) -> Block {
-    let mut rv: Block = block::zero();
-    for (idx, d) in rv.iter_mut().enumerate() {
-        *d = blocks.iter().fold(*d, |n, &&blk| n ^ blk[idx]);
+    if blocks.len() == 0 {
+        block::zero()
+    } else {
+        let mut rv = *blocks[0];
+        for block in blocks.iter().skip(1) {
+            for (d, s) in rv.iter_mut().zip(block.iter()) {
+                *d = *d ^ *s;
+            }
+        }
+        rv
     }
-    rv
 }
 
 fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
