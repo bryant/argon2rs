@@ -187,7 +187,7 @@ impl Error for DecodeError {
     }
 }
 
-pub struct Verifier {
+pub struct Encoded {
     params: Argon2,
     hash: Vec<u8>,
     salt: Vec<u8>,
@@ -206,7 +206,7 @@ macro_rules! try_unit {
 
 type Packed = (Variant, u32, u32, u32, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>);
 
-impl Verifier {
+impl Encoded {
     fn parse(encoded: &[u8]) -> Result<Packed, usize> {
         let mut p = Parser {
             enc: encoded,
@@ -252,7 +252,7 @@ impl Verifier {
                 match Argon2::new(passes, lanes, kib, v) {
                     Err(e) => Err(DecodeError::InvalidParams(e)),
                     Ok(a2) => {
-                        Ok(Verifier {
+                        Ok(Encoded {
                             params: a2,
                             hash: hash,
                             salt: salt,
@@ -290,7 +290,7 @@ impl Verifier {
     pub fn new(argon: Argon2, p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> Self {
         let mut out = vec![0 as u8; defaults::LENGTH];
         argon.hash(&mut out[..], p, s, k, x);
-        Verifier {
+        Encoded {
             params: argon,
             hash: out,
             salt: s.iter().cloned().collect(),
@@ -320,7 +320,7 @@ pub fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
 
 #[cfg(test)]
 mod test {
-    use super::{Verifier, base64_no_pad, debase64_no_pad};
+    use super::{Encoded, base64_no_pad, debase64_no_pad};
 
     const BASE64_CASES: [(&'static [u8], &'static [u8]); 5] =
         [(b"any carnal pleasure.", b"YW55IGNhcm5hbCBwbGVhc3VyZS4"),
@@ -349,7 +349,7 @@ mod test {
 
     #[test]
     fn test_verify() {
-        let v = Verifier::from_u8(ENCODED).unwrap();
+        let v = Encoded::from_u8(ENCODED).unwrap();
         assert_eq!(v.verify(b"argon2i!"), true);
         assert_eq!(v.verify(b"nope"), false);
     }
@@ -364,10 +364,10 @@ mod test {
               (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(30)),
               (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff",
                InvalidParams(TooFewPasses)),
-              // intentionally fail Verifier::expect with undersized input
+              // intentionally fail Encoded::expect with undersized input
               (b"$argon2i$m", ParseError(8))];
         for &(case, err) in cases.iter() {
-            let v = Verifier::from_u8(case);
+            let v = Encoded::from_u8(case);
             assert!(v.is_err());
             assert_eq!(v.err().unwrap(), err);
         }
