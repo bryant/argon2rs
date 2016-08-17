@@ -8,7 +8,7 @@ This is a purely Rust-based library that provides both variants of the
 state-of-the-art Argon2 hashing algorithm, suitable for password hashing and
 password-based key derivation.
 
-[Documentation](http://bryant.github.io/argon2rs/)
+[Documentation](http://bryant.github.io/argon2rs/argon2rs/)
 
 ## Installation
 
