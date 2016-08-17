@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["DecodeError",""]],"fn":[["constant_eq","Compares two byte arrays for equality. Assumes that both are already of equal length."]],"struct":[["Encoded","Represents a single Argon2 hashing session. A hash session comprises of the hash algorithm parameters, salt, key, and data used to hash a given input."]]});
