@@ -1,3 +1,6 @@
+/// The main export here is `Encoded`. See `examples/verify.rs` for usage
+/// examples.
+
 use std::{fmt, str};
 use std::error::Error;
 use argon2::{Argon2, ParamErr, Variant, defaults};
@@ -162,7 +165,9 @@ impl<'a> Parser<'a> {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum DecodeError {
+    /// Byte position of first parse error
     ParseError(usize),
+    /// Invalid Argon2 parameters given in encoding
     InvalidParams(ParamErr),
 }
 
@@ -187,6 +192,8 @@ impl Error for DecodeError {
     }
 }
 
+/// Represents a single Argon2 hashing session. A hash session comprises of the
+/// hash algorithm parameters, salt, key, and data used to hash a given input.
 pub struct Encoded {
     params: Argon2,
     hash: Vec<u8>,
@@ -245,6 +252,7 @@ impl Encoded {
         Ok((variant, kib, passes, lanes, key, data, salt, hash))
     }
 
+    /// Reconstruct a previous hash session from serialized bytes.
     pub fn from_u8(encoded: &[u8]) -> Result<Self, DecodeError> {
         match Self::parse(encoded) {
             Err(pos) => Err(DecodeError::ParseError(pos)),
@@ -265,6 +273,8 @@ impl Encoded {
         }
     }
 
+    /// Serialize this hashing session into raw bytes that can later be
+    /// recovered by `Encoded::from_u8`.
     #[cfg_attr(rustfmt, rustfmt_skip)]
     pub fn to_u8(&self) -> Vec<u8> {
         let vcode = |v| match v {
@@ -287,6 +297,22 @@ impl Encoded {
             .into_bytes()
     }
 
+    /// Generates a new hashing session from password, salt, and other byte
+    /// input.  Parameters are:
+    ///
+    /// `argon`: An `Argon2` struct representative of the desired hash algorithm
+    /// parameters.
+    ///
+    /// `p`: Password input.
+    ///
+    /// `s`: Salt.
+    ///
+    /// `k`: An optional secret value.
+    ///
+    /// `x`: Optional, miscellaneous associated data.
+    ///
+    /// Note that `p, s, k, x` must conform to the same length constraints
+    /// dictated by `Argon2::hash`.
     pub fn new(argon: Argon2, p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> Self {
         let mut out = vec![0 as u8; defaults::LENGTH];
         argon.hash(&mut out[..], p, s, k, x);
@@ -299,6 +325,8 @@ impl Encoded {
         }
     }
 
+    /// Verifies password input against the hash that was previously created in
+    /// this hashing session.
     pub fn verify(&self, p: &[u8]) -> bool {
         let mut out = [0 as u8; defaults::LENGTH];
         let s = &self.salt[..];
@@ -307,6 +335,8 @@ impl Encoded {
     }
 }
 
+/// Compares two byte arrays for equality. Assumes that both are already of
+/// equal length.
 #[inline(never)]
 pub fn constant_eq(xs: &[u8], ys: &[u8]) -> bool {
     if xs.len() != ys.len() {
