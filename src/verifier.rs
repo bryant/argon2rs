@@ -325,6 +325,18 @@ impl Encoded {
         }
     }
 
+    /// Same as `Encoded::new`, but with the default Argon2i hash algorithm
+    /// parameters.
+    pub fn default2i(p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> Self {
+        Self::new(Argon2::default(Variant::Argon2i), p, s, k, x)
+    }
+
+    /// Same as `Encoded::new`, but with the default _Argon2d_ hash algorithm
+    /// parameters.
+    pub fn default2d(p: &[u8], s: &[u8], k: &[u8], x: &[u8]) -> Self {
+        Self::new(Argon2::default(Variant::Argon2d), p, s, k, x)
+    }
+
     /// Verifies password input against the hash that was previously created in
     /// this hashing session.
     pub fn verify(&self, p: &[u8]) -> bool {
