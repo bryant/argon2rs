@@ -1,5 +1,5 @@
 use octword::u64x2;
-use std::ops::{Index, IndexMut};
+use std::ops::{BitXorAssign, Index, IndexMut};
 use std::mem;
 use std::slice::{Iter, IterMut};
 
@@ -25,6 +25,24 @@ impl Block {
     pub fn iter_mut(&mut self) -> IterMut<u64x2> { self.0.iter_mut() }
 
     pub fn iter(&self) -> Iter<u64x2> { self.0.iter() }
+}
+
+impl<'a> BitXorAssign<&'a Block> for Block {
+    #[inline(always)]
+    fn bitxor_assign(&mut self, rhs: &Block) {
+        for (d, r) in self.0.iter_mut().zip(rhs.0.iter()) {
+            *d = *d ^ *r;
+        }
+    }
+}
+
+impl<'a, 'b> BitXorAssign<(&'a Block, &'b Block)> for Block {
+    #[inline(always)]
+    fn bitxor_assign(&mut self, (a, b): (&Block, &Block)) {
+        for (d, (l, r)) in self.0.iter_mut().zip(a.0.iter().zip(b.0.iter())) {
+            *d = *d ^ *l ^ *r;
+        }
+    }
 }
 
 impl Index<usize> for Block {
