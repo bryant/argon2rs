@@ -1,7 +1,7 @@
 use octword::u64x2;
 use std::ops::{Index, IndexMut};
 use std::mem;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 pub const ARGON2_BLOCK_BYTES: usize = 1024;
 
@@ -11,22 +11,47 @@ macro_rules! per_kib {
     (u64x2) => { ARGON2_BLOCK_BYTES / 16 };
 }
 
-pub type Block = [u64x2; per_kib!(u64x2)];
+pub struct Block([u64x2; per_kib!(u64x2)]);
 
-pub fn zero() -> Block { [u64x2(0, 0); per_kib!(u64x2)] }
+impl Clone for Block {
+    #[inline(always)]
+    fn clone(&self) -> Self {
+        let inner = self.0;
+        Block(inner)
+    }
+}
+
+impl Block {
+    pub fn iter_mut(&mut self) -> IterMut<u64x2> { self.0.iter_mut() }
+
+    pub fn iter(&self) -> Iter<u64x2> { self.0.iter() }
+}
+
+impl Index<usize> for Block {
+    type Output = u64x2;
+    #[inline(always)]
+    fn index(&self, idx: usize) -> &Self::Output { &self.0[idx] }
+}
+
+impl IndexMut<usize> for Block {
+    #[inline(always)]
+    fn index_mut(&mut self, idx: usize) -> &mut u64x2 { &mut self.0[idx] }
+}
+
+pub fn zero() -> Block { Block([u64x2(0, 0); per_kib!(u64x2)]) }
 
 pub fn as_u8_mut(b: &mut Block) -> &mut [u8] {
-    let rv: &mut [u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
+    let rv: &mut [u8; per_kib!(u8)] = unsafe { mem::transmute(&mut b.0) };
     rv
 }
 
 pub fn as_u8(b: &Block) -> &[u8] {
-    let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(b) };
+    let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(&b.0) };
     rv
 }
 
 pub fn as_u64(b: &Block) -> &[u64] {
-    let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(b) };
+    let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(&b.0) };
     rv
 }
 

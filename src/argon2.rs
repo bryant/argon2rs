@@ -34,7 +34,7 @@ fn xor_all(blocks: &Vec<&Block>) -> Block {
     if blocks.len() == 0 {
         block::zero()
     } else {
-        let mut rv = *blocks[0];
+        let mut rv = blocks[0].clone();
         for block in blocks.iter().skip(1) {
             for (d, s) in rv.iter_mut().zip(block.iter()) {
                 *d = *d ^ *s;
@@ -443,7 +443,7 @@ fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
 /// ``` g2 y = let g' y = g 0 y in g' . g' ```
 /// Used for data-independent index generation.
 fn g_two(dest: &mut Block, src: &Block) {
-    *dest = *src;
+    *dest = src.clone();
 
     for row in 0..8 {
         p_row(row, dest);
@@ -456,7 +456,7 @@ fn g_two(dest: &mut Block, src: &Block) {
         *d = *d ^ *s;
     }
 
-    let tmp: Block = *dest;
+    let tmp: Block = dest.clone();
 
     for row in 0..8 {
         p_row(row, dest);
