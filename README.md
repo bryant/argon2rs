@@ -89,7 +89,7 @@ $ rustc --version
 rustc 1.11.0-dev (4b240fe96 2016-06-08)
 
 $ export RUSTFLAGS='-C target-feature=+avx'
-$ cargo bench --features=simd
+$ cargo bench --features="simd bench_ref"
 
 # output trimmed for brevity
 
