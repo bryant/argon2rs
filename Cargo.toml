@@ -12,10 +12,9 @@ license = "MIT"
 [features]
 default = []
 simd = ["blake2-rfc/simd_asm"]
+bench_ref = ["cargon"]
 
 [dependencies]
 blake2-rfc = "0.2.16"
 scoped_threadpool = "0.1.7"
-
-[dev-dependencies]
-cargon = { path = "benches/cargon", version = "0.0.1" }
+cargon = { path = "benches/cargon", version = "0.0.1", optional = true }

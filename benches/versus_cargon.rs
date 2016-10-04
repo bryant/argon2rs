@@ -2,6 +2,7 @@
 // https://github.com/p-h-c/phc-winner-argon2
 
 #![feature(test)]
+#![cfg(feature = "bench_ref")]
 
 extern crate test;
 extern crate argon2rs;
