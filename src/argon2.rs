@@ -19,8 +19,16 @@ const DEF_B2HASH_LEN: usize = 64;
 const SLICES_PER_LANE: u32 = 4;
 
 pub mod defaults {
-    // from run.c
-    pub const PASSES: u32 = 3;
+    // partially from run.c
+
+    /// Must be greater than 10.
+    ///
+    /// Joël Alwen and Jeremiah Blocki published a possible attack
+    /// on Argon2i *(see reference link in the README.md)* and
+    /// came to the conclusion that Argon2i would require more than
+    /// 10 passes over memory for the attack to fail.
+    pub const PASSES: u32 = 16;
+
     pub const KIB: u32 = 4096;
     pub const LANES: u32 = 1;
     pub const LENGTH: usize = 32;
@@ -135,6 +143,7 @@ impl Argon2 {
     ///
     /// `passes`: The number of block matrix iterations to perform. Increasing
     /// this forces hashing to take longer. Must be between 1 and 2^32 - 1.
+    /// Use a value greater than 10 for strong hashes.
     ///
     /// `lanes`: The degree of parallelism by which memory is filled during hash
     /// computation. Setting this to N instructs argon2rs to partition the block
