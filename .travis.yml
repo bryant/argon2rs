@@ -1,6 +1,7 @@
 language: rust
 rust:
   - nightly
+  - beta
   - stable
 sudo: false
 script: ./travis.sh
