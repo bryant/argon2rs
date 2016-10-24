@@ -10,11 +10,11 @@ keywords = ["crypto", "argon2", "argon2i", "argon2d", "hash"]
 license = "MIT"
 
 [features]
-default = []
+default = ["scoped_threadpool"]
 simd = ["blake2-rfc/simd_asm"]
 bench_ref = ["cargon"]
 
 [dependencies]
 blake2-rfc = "0.2.16"
-scoped_threadpool = "0.1.7"
+scoped_threadpool = { version = "0.1.7", optional = true }
 cargon = { path = "benches/cargon", version = "0.0.1", optional = true }
