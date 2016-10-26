@@ -1,6 +1,6 @@
 use octword::u64x2;
-use std::ops::{BitXorAssign, Index, IndexMut};
 use std::mem;
+use std::ops::{BitXorAssign, Index, IndexMut};
 use std::slice::{Iter, IterMut};
 
 pub const ARGON2_BLOCK_BYTES: usize = 1024;
@@ -25,6 +25,22 @@ impl Block {
     pub fn iter_mut(&mut self) -> IterMut<u64x2> { self.0.iter_mut() }
 
     pub fn iter(&self) -> Iter<u64x2> { self.0.iter() }
+
+    pub fn as_u8_mut(&mut self) -> &mut [u8] {
+        let rv: &mut [u8; per_kib!(u8)] =
+            unsafe { mem::transmute(&mut self.0) };
+        rv
+    }
+
+    pub fn as_u8(&self) -> &[u8] {
+        let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(&self.0) };
+        rv
+    }
+
+    pub fn as_u64(&self) -> &[u64] {
+        let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(&self.0) };
+        rv
+    }
 }
 
 impl<'a> BitXorAssign<&'a Block> for Block {
@@ -57,21 +73,6 @@ impl IndexMut<usize> for Block {
 }
 
 pub fn zero() -> Block { Block([u64x2(0, 0); per_kib!(u64x2)]) }
-
-pub fn as_u8_mut(b: &mut Block) -> &mut [u8] {
-    let rv: &mut [u8; per_kib!(u8)] = unsafe { mem::transmute(&mut b.0) };
-    rv
-}
-
-pub fn as_u8(b: &Block) -> &[u8] {
-    let rv: &[u8; per_kib!(u8)] = unsafe { mem::transmute(&b.0) };
-    rv
-}
-
-pub fn as_u64(b: &Block) -> &[u64] {
-    let rv: &[u64; per_kib!(u64)] = unsafe { mem::transmute(&b.0) };
-    rv
-}
 
 pub struct Matrix(Vec<Vec<Block>>);
 

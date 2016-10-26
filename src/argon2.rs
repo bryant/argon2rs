@@ -220,7 +220,7 @@ impl Argon2 {
             pass_fn(p, &blocks);  // kats
         }
 
-        h_prime(out, block::as_u8(&xor_all(&blocks.col(self.lanelen - 1))));
+        h_prime(out, &xor_all(&blocks.col(self.lanelen - 1)).as_u8());
     }
 
     // `Matrix` is an array of 1-KiB blocks and organized as follows:
@@ -266,10 +266,10 @@ impl Argon2 {
         h0[68..72].clone_from_slice(&as32le(lane));
 
         h0[64..68].clone_from_slice(&as32le(0));
-        h_prime(block::as_u8_mut(&mut blks[(lane, 0)]), &h0);
+        h_prime(blks[(lane, 0)].as_u8_mut(), &h0);
 
         h0[64..68].clone_from_slice(&as32le(1));
-        h_prime(block::as_u8_mut(&mut blks[(lane, 1)]), &h0);
+        h_prime(blks[(lane, 1)].as_u8_mut(), &h0);
 
         // finish rest of first slice
         self.fill_slice(blks, 0, lane, 0, 2);
@@ -410,7 +410,7 @@ impl Gen2i {
     }
 
     fn nextj(&mut self) -> (u32, u32) {
-        let rv = split_u64(block::as_u64(&self.pseudos)[self.idx]);
+        let rv = split_u64(self.pseudos.as_u64()[self.idx]);
         self.idx = (self.idx + 1) % per_kib!(u64);
         if self.idx == 0 {
             self.more();
@@ -541,7 +541,7 @@ mod tests {
     }
 
     fn block_info(i: usize, b: &block::Block) -> String {
-        let blk = block::as_u64(b);
+        let blk = b.as_u64();
         blk.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
             xs + "Block " + &format!("{:004} ", i) + &format!("[{:>3}]: ", j) +
             &format!("{:0016x}", octword) + "\n"
