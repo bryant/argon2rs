@@ -106,6 +106,10 @@ impl Matrix {
         unsafe { (&mut (*p)[wr], &(*p)[rd0], &(*p)[rd1]) }
     }
 
+    pub unsafe fn mut_ref<'a>(&mut self) -> &'a mut Self {
+        &mut *(self as *mut Self)
+    }
+
     pub fn lanes_as_mut(&mut self) -> Vec<&mut Self> {
         let p: *mut Self = self;
         (0..self.0.len()).map(|_| unsafe { &mut (*p) }).collect()
