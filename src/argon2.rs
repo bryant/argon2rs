@@ -141,7 +141,7 @@ impl Argon2 {
     /// matrix into N lanes, simultaneously filling each lane in parallel with N
     /// threads. Must be between 1 and 2^24 - 1.
     ///
-    /// `kib`: Desired total size of block matrix, in kibbibytes (1 KiB = 1024
+    /// `kib`: Desired total size of block matrix, in kibibytes (1 KiB = 1024
     /// bytes). Increasing this forces hashing to use more memory in order to
     /// thwart ASIC-based attacks. Must be >= 8 * lanes.
     ///
@@ -314,7 +314,7 @@ impl Argon2 {
         if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
 
-    /// Provides read-only access to `(variant, kibbibytes, passes, lanes)`.
+    /// Provides read-only access to `(variant, kibibytes, passes, lanes)`.
     pub fn params(&self) -> (Variant, u32, u32, u32) {
         (self.variant, self.kib, self.passes, self.lanes)
     }
