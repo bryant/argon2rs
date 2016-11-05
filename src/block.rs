@@ -103,8 +103,7 @@ impl Matrix {
                 -> (&mut Block, &Block, &Block) {
         assert!(wr != rd0 && wr != rd1);
         let p: *mut Matrix = self;
-        let rv = unsafe { (&mut (*p)[wr], &(*p)[rd0], &(*p)[rd1]) };
-        rv
+        unsafe { (&mut (*p)[wr], &(*p)[rd0], &(*p)[rd1]) }
     }
 
     pub fn lanes_as_mut(&mut self) -> Vec<&mut Self> {
