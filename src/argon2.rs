@@ -186,8 +186,8 @@ impl Argon2 {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn hash_impl<F, G>(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
                        x: &[u8], mut h0_fn: F, mut pass_fn: G)
-        where F: FnMut(&[u8]) -> (),
-              G: FnMut(u32, &Matrix) -> ()
+        where F: FnMut(&[u8]),
+              G: FnMut(u32, &Matrix)
     {
         assert!(4 <= out.len() && out.len() <= 0xffffffff);
         assert!(p.len() <= 0xffffffff);
