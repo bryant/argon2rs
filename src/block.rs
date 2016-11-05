@@ -110,11 +110,6 @@ impl Matrix {
         &mut *(self as *mut Self)
     }
 
-    pub fn lanes_as_mut(&mut self) -> Vec<&mut Self> {
-        let p: *mut Self = self;
-        (0..self.0.len()).map(|_| unsafe { &mut (*p) }).collect()
-    }
-
     pub fn col(&self, col: u32) -> Vec<&Block> {
         self.0.iter().map(|l| &l[col as usize]).collect()
     }
