@@ -1,5 +1,4 @@
 extern crate blake2_rfc;
-extern crate scoped_threadpool;
 
 use std::{fmt, mem};
 use std::error::Error;
@@ -247,25 +246,6 @@ impl Argon2 {
     //  - There are always four slices.
     //  - `lanelen * lane = self.kib`.
     //  - Filling is done segment-by-segment.
-    #[inline(always)]
-    fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix,
-                    pool: &mut scoped_threadpool::Pool) {
-        if self.lanes == 1 {
-            for slice in slice_begin..SLICES_PER_LANE {
-                self.fill_slice(blocks, pass, 0, slice, 0);
-            }
-            return;
-        }
-
-        for slice in slice_begin..SLICES_PER_LANE {
-            pool.scoped(|sc| {
-                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.execute(move || self.fill_slice(bref, pass, l, slice, 0));
-                }
-            });
-        }
-    }
-
     fn fill_first_slice(&self, blks: &mut Matrix, mut h0: [u8; 72], lane: u32) {
         // fill the first (of four) slice
         h0[68..72].clone_from_slice(&as32le(lane));
