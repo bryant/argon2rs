@@ -142,7 +142,7 @@ impl Argon2 {
     /// matrix into N lanes, simultaneously filling each lane in parallel with N
     /// threads. Must be between 1 and 2^24 - 1.
     ///
-    /// `kib`: Desired total size of block matrix, in kibbibytes (1 KiB = 1024
+    /// `kib`: Desired total size of block matrix, in kibibytes (1 KiB = 1024
     /// bytes). Increasing this forces hashing to use more memory in order to
     /// thwart ASIC-based attacks. Must be >= 8 * lanes.
     ///
@@ -188,8 +188,8 @@ impl Argon2 {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn hash_impl<F, G>(&self, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8],
                        x: &[u8], mut h0_fn: F, mut pass_fn: G)
-        where F: FnMut(&[u8]) -> (),
-              G: FnMut(u32, &Matrix) -> ()
+        where F: FnMut(&[u8]),
+              G: FnMut(u32, &Matrix)
     {
         assert!(4 <= out.len() && out.len() <= 0xffffffff);
         assert!(p.len() <= 0xffffffff);
@@ -222,7 +222,7 @@ impl Argon2 {
             pass_fn(p, &blocks);  // kats
         }
 
-        h_prime(out, block::as_u8(&xor_all(&blocks.col(self.lanelen - 1))));
+        h_prime(out, &xor_all(&blocks.col(self.lanelen - 1)).as_u8());
     }
 
     // `Matrix` is an array of 1-KiB blocks and organized as follows:
@@ -332,10 +332,10 @@ impl Argon2 {
         h0[68..72].clone_from_slice(&as32le(lane));
 
         h0[64..68].clone_from_slice(&as32le(0));
-        h_prime(block::as_u8_mut(&mut blks[(lane, 0)]), &h0);
+        h_prime(blks[(lane, 0)].as_u8_mut(), &h0);
 
         h0[64..68].clone_from_slice(&as32le(1));
-        h_prime(block::as_u8_mut(&mut blks[(lane, 1)]), &h0);
+        h_prime(blks[(lane, 1)].as_u8_mut(), &h0);
 
         // finish rest of first slice
         self.fill_slice(blks, 0, lane, 0, 2);
@@ -380,7 +380,7 @@ impl Argon2 {
         if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
 
-    /// Provides read-only access to `(variant, kibbibytes, passes, lanes)`.
+    /// Provides read-only access to `(variant, kibibytes, passes, lanes)`.
     pub fn params(&self) -> (Variant, u32, u32, u32) {
         (self.variant, self.kib, self.passes, self.lanes)
     }
@@ -439,7 +439,7 @@ fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
     };
 
     let (r_, j1_) = (r as u64, j1 as u64);
-    let relpos: u32 = (r_ - 1 - (r_ * (j1_ * j1_ >> 32) >> 32)) as u32;
+    let relpos = (r_ - 1 - (r_ * (j1_ * j1_ >> 32) >> 32)) as u32;
 
     match (pass, slice) {
         (0, _) | (_, 3) => relpos % lanelen,
@@ -476,7 +476,7 @@ impl Gen2i {
     }
 
     fn nextj(&mut self) -> (u32, u32) {
-        let rv = split_u64(block::as_u64(&self.pseudos)[self.idx]);
+        let rv = split_u64(self.pseudos.as_u64()[self.idx]);
         self.idx = (self.idx + 1) % per_kib!(u64);
         if self.idx == 0 {
             self.more();
@@ -607,7 +607,7 @@ mod tests {
     }
 
     fn block_info(i: usize, b: &block::Block) -> String {
-        let blk = block::as_u64(b);
+        let blk = b.as_u64();
         blk.iter().enumerate().fold(String::new(), |xs, (j, octword)| {
             xs + "Block " + &format!("{:004} ", i) + &format!("[{:>3}]: ", j) +
             &format!("{:0016x}", octword) + "\n"
