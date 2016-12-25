@@ -22,7 +22,10 @@ pub mod defaults {
     // from run.c
     pub const PASSES: u32 = 3;
     pub const KIB: u32 = 4096;
+    /// Default level of parallelism.
     pub const LANES: u32 = 1;
+    /// The size of Argon2's hash output is adjustable. This is the default
+    /// length.
     pub const LENGTH: usize = 32;
 }
 
