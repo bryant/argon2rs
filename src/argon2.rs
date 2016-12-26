@@ -498,7 +498,6 @@ fn p(v0v1: &mut u64x2, v2v3: &mut u64x2, v4v5: &mut u64x2, v6v7: &mut u64x2,
     v14v15 = v14v15;
 }
 
-
 #[cfg_attr(rustfmt, rustfmt_skip)]
 fn p_row(row: usize, b: &mut Block) {
     p(b[8 * row + 0], b[8 * row + 1], b[8 * row + 2], b[8 * row + 3],
