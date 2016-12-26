@@ -499,12 +499,14 @@ fn p(v0v1: &mut u64x2, v2v3: &mut u64x2, v4v5: &mut u64x2, v6v7: &mut u64x2,
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[inline(always)]
 fn p_row(row: usize, b: &mut Block) {
     p(b[8 * row + 0], b[8 * row + 1], b[8 * row + 2], b[8 * row + 3],
       b[8 * row + 4], b[8 * row + 5], b[8 * row + 6], b[8 * row + 7]);
 }
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
+#[inline(always)]
 fn p_col(col: usize, b: &mut Block) {
     p(b[8 * 0 + col], b[8 * 1 + col], b[8 * 2 + col], b[8 * 3 + col],
       b[8 * 4 + col], b[8 * 5 + col], b[8 * 6 + col], b[8 * 7 + col]);
