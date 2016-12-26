@@ -463,40 +463,39 @@ fn g_two(dest: &mut Block, src: &Block) {
     *dest ^= &tmp;
 }
 
-macro_rules! p {
-    ($v0v1: expr, $v2v3: expr, $v4v5: expr, $v6v7: expr,
-     $v8v9: expr, $v10v11: expr, $v12v13: expr, $v14v15: expr) => {
-        {
-            g_blake2b!($v0v1, $v4v5, $v8v9, $v12v13);
-            g_blake2b!($v2v3, $v6v7, $v10v11, $v14v15);
-
-            let (mut v7v4, mut v5v6) = $v4v5.cross_swap($v6v7);
-            let (mut v15v12, mut v13v14) = $v12v13.cross_swap($v14v15);
-
-            g_blake2b!($v0v1, v5v6, $v10v11, v15v12);
-            g_blake2b!($v2v3, v7v4, $v8v9, v13v14);
-
-            let (v4v5, v6v7) = v5v6.cross_swap(v7v4);
-            let (v12v13, v14v15) = v13v14.cross_swap(v15v12);
-            $v4v5 = v4v5;
-            $v6v7 = v6v7;
-            $v12v13 = v12v13;
-            $v14v15 = v14v15;
-        }
-    };
+// Modified Blake2b round function
+#[inline(always)]
+fn g_blake2b(a: &mut u64x2, b: &mut u64x2, c: &mut u64x2, d: &mut u64x2) {
+    a = a + b + a.lower_mult(b) * u64x2(2, 2);
+    d = (d ^ a).rotate_right(32);
+    c = c + d + c.lower_mult(d) * u64x2(2, 2);
+    b = (b ^ c).rotate_right(24);
+    a = a + b + a.lower_mult(b) * u64x2(2, 2);
+    d = (d ^ a).rotate_right(16);
+    c = c + d + c.lower_mult(d) * u64x2(2, 2);
+    b = (b ^ c).rotate_right(63);
 }
 
-macro_rules! g_blake2b {
-    ($a: expr, $b: expr, $c: expr, $d: expr) => {
-        $a = $a + $b + $a.lower_mult($b) * u64x2(2, 2);
-        $d = ($d ^ $a).rotate_right(32);
-        $c = $c + $d + $c.lower_mult($d) * u64x2(2, 2);
-        $b = ($b ^ $c).rotate_right(24);
-        $a = $a + $b + $a.lower_mult($b) * u64x2(2, 2);
-        $d = ($d ^ $a).rotate_right(16);
-        $c = $c + $d + $c.lower_mult($d) * u64x2(2, 2);
-        $b = ($b ^ $c).rotate_right(63);
-    };
+// 8x 16-byte permutation function.
+#[inline(always)]
+fn p(v0v1: &mut u64x2, v2v3: &mut u64x2, v4v5: &mut u64x2, v6v7: &mut u64x2,
+     v8v9: &mut u64x2, v10v11: &mut u64x2, v12v13: &mut u64x2,
+     v14v15: &mut u64x2) {
+    g_blake2b(v0v1, v4v5, v8v9, v12v13);
+    g_blake2b(v2v3, v6v7, v10v11, v14v15);
+
+    let (mut v7v4, mut v5v6) = v4v5.cross_swap(v6v7);
+    let (mut v15v12, mut v13v14) = v12v13.cross_swap(v14v15);
+
+    g_blake2b(v0v1, v5v6, v10v11, v15v12);
+    g_blake2b(v2v3, v7v4, v8v9, v13v14);
+
+    let (v4v5, v6v7) = v5v6.cross_swap(v7v4);
+    let (v12v13, v14v15) = v13v14.cross_swap(v15v12);
+    v4v5 = v4v5;
+    v6v7 = v6v7;
+    v12v13 = v12v13;
+    v14v15 = v14v15;
 }
 
 
