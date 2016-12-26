@@ -78,6 +78,8 @@ pub struct Matrix(Vec<Vec<Block>>);
 
 impl Index<(u32, u32)> for Matrix {
     type Output = Block;
+
+    #[inline(always)]
     fn index(&self, idx: (u32, u32)) -> &Block {
         match idx {
             (row, col) => &(self.0[row as usize])[col as usize],
@@ -86,6 +88,7 @@ impl Index<(u32, u32)> for Matrix {
 }
 
 impl IndexMut<(u32, u32)> for Matrix {
+    #[inline(always)]
     fn index_mut(&mut self, idx: (u32, u32)) -> &mut Block {
         match idx {
             (row, col) => &mut (self.0[row as usize])[col as usize],
