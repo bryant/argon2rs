@@ -66,6 +66,7 @@ for password hashing.
 - [x] Benchmarks.
 - [ ] Support NEON and SIMD on other arches.
 - [ ] Fuzz.
+- [ ] Prove safety of unchecked accesses in `Block`, `Matrix`.
 
 ## Benchmarks
 
