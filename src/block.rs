@@ -64,12 +64,16 @@ impl<'a, 'b> BitXorAssign<(&'a Block, &'b Block)> for Block {
 impl Index<usize> for Block {
     type Output = u64x2;
     #[inline(always)]
-    fn index(&self, idx: usize) -> &Self::Output { &self.0[idx] }
+    fn index(&self, idx: usize) -> &Self::Output {
+        unsafe { self.0.get_unchecked(idx) }
+    }
 }
 
 impl IndexMut<usize> for Block {
     #[inline(always)]
-    fn index_mut(&mut self, idx: usize) -> &mut u64x2 { &mut self.0[idx] }
+    fn index_mut(&mut self, idx: usize) -> &mut u64x2 {
+        unsafe { self.0.get_unchecked_mut(idx) }
+    }
 }
 
 pub fn zero() -> Block { Block([u64x2(0, 0); per_kib!(u64x2)]) }
@@ -82,7 +86,9 @@ impl Index<(u32, u32)> for Matrix {
     #[inline(always)]
     fn index(&self, idx: (u32, u32)) -> &Block {
         match idx {
-            (row, col) => &(self.0[row as usize])[col as usize],
+            (row, col) => unsafe {
+                self.0.get_unchecked(row as usize).get_unchecked(col as usize)
+            },
         }
     }
 }
@@ -91,7 +97,11 @@ impl IndexMut<(u32, u32)> for Matrix {
     #[inline(always)]
     fn index_mut(&mut self, idx: (u32, u32)) -> &mut Block {
         match idx {
-            (row, col) => &mut (self.0[row as usize])[col as usize],
+            (row, col) => unsafe {
+                self.0
+                    .get_unchecked_mut(row as usize)
+                    .get_unchecked_mut(col as usize)
+            },
         }
     }
 }
