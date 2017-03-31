@@ -67,10 +67,6 @@ for password hashing.
 - [ ] Support NEON and SIMD on other arches.
 - [ ] Fuzz.
 
-## LICENSE
-
-MIT.
-
 ## Benchmarks
 
 Our primary benchmarks are single- and multi-threaded runs of Argon2i with
