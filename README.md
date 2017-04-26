@@ -35,8 +35,8 @@ extern crate argon2rs;
 
 pub fn main() {
     let (password, salt) = ("argon2i!", "delicious salt");
-    println!("argon2i(\"argon2i\", \"delicious\"):");
-    for byte in argon2rs::simple2i(&password, &salt).iter() {
+    println!("argon2i_simple(\"{}\", \"{}\"):", password, salt);
+    for byte in argon2rs::argon2i_simple(&password, &salt).iter() {
         print!("{:02x}", byte);
     }
     println!("");
@@ -46,7 +46,7 @@ pub fn main() {
 outputs:
 
 ```
-argon2i("argon2i", "delicious"):
+argon2i_simple("argon2i!", "delicious salt"):
 e254b28d820f26706a19309f1888cefd5d48d91384f35dc2e3fe75c3a8f665a6
 ```
 
