@@ -539,7 +539,7 @@ mod tests {
 
             let passfn = |p: u32, matrix: &block::Matrix| {
                 wl!(&mut blockoutput, "\n After pass {}:", p);
-                for (i, block) in matrix.iter().flat_map(|ls| ls).enumerate() {
+                for (i, block) in matrix.iter().enumerate() {
                     w!(&mut blockoutput, "{}", block_info(i, block));
                 }
             };

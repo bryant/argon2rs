@@ -78,17 +78,22 @@ impl IndexMut<usize> for Block {
 
 pub fn zero() -> Block { Block([u64x2(0, 0); per_kib!(u64x2)]) }
 
-pub struct Matrix(Vec<Vec<Block>>);
+pub struct Matrix {
+    blocks: Vec<Block>,
+    lanes: u32,
+    lanelen: u32,
+}
 
 impl Index<(u32, u32)> for Matrix {
     type Output = Block;
 
     #[inline(always)]
     fn index(&self, idx: (u32, u32)) -> &Block {
-        match idx {
-            (row, col) => unsafe {
-                self.0.get_unchecked(row as usize).get_unchecked(col as usize)
-            },
+        let (row, col) = idx;
+        debug_assert!(row < self.lanes && col < self.lanelen);
+        unsafe {
+            self.blocks.get_unchecked(row as usize * self.lanelen as usize +
+                                      col as usize)
         }
     }
 }
@@ -96,20 +101,23 @@ impl Index<(u32, u32)> for Matrix {
 impl IndexMut<(u32, u32)> for Matrix {
     #[inline(always)]
     fn index_mut(&mut self, idx: (u32, u32)) -> &mut Block {
-        match idx {
-            (row, col) => unsafe {
-                self.0
-                    .get_unchecked_mut(row as usize)
-                    .get_unchecked_mut(col as usize)
-            },
+        let (row, col) = idx;
+        debug_assert!(row < self.lanes && col < self.lanelen);
+        unsafe {
+            self.blocks.get_unchecked_mut(row as usize * self.lanelen as usize +
+                                          col as usize)
         }
     }
 }
 
 impl Matrix {
     pub fn new(lanes: u32, lanelen: u32) -> Self {
-        let newlane = || (0..lanelen).map(|_| zero()).collect();
-        Matrix((0..lanes).map(|_| newlane()).collect())
+        debug_assert!(lanes > 0 && lanelen > 0);
+        Matrix {
+            blocks: vec![zero(); lanelen as usize * lanes as usize],
+            lanes: lanes,
+            lanelen: lanelen,
+        }
     }
 
     pub fn get3(&mut self, wr: (u32, u32), rd0: (u32, u32), rd1: (u32, u32))
@@ -125,22 +133,21 @@ impl Matrix {
 
     // Xors the Blocks of column `col` together.
     pub fn xor_column(&self, col: u32) -> Block {
-        let mut rv = self.0[0][col as usize].clone();
-        for row in self.0.iter().skip(1) {
-            rv ^= &row[col as usize];
+        debug_assert!(col < self.lanelen);
+        let mut rv = self[(0, col)].clone();
+        for row in 1..self.lanes {
+            rv ^= &self[(row, col)];
         }
         rv
     }
 
-    pub fn iter(&self) -> Iter<Vec<Block>> { self.0.iter() }
+    pub fn iter(&self) -> Iter<Block> { self.blocks.iter() }
 }
 
 impl Drop for Matrix {
     fn drop(&mut self) {
-        for lane in self.0.iter_mut() {
-            for blk in lane.iter_mut() {
-                *blk = zero();
-            }
+        for blk in self.blocks.iter_mut() {
+            *blk = zero();
         }
     }
 }
