@@ -1,5 +1,4 @@
 extern crate blake2_rfc;
-extern crate scoped_threadpool;
 
 use std::{fmt, mem};
 use std::error::Error;
@@ -7,6 +6,7 @@ use self::blake2_rfc::blake2b::Blake2b;
 use octword::u64x2;
 use block::{ARGON2_BLOCK_BYTES, Block, Matrix};
 use block;
+use workers::Workers;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum Variant {
@@ -203,23 +203,24 @@ impl Argon2 {
                     ARGON2_VERSION, self.variant, p, s, k, x);
         h0_fn(&h0);  // kats
 
-        let mut pool = scoped_threadpool::Pool::new(self.lanes);
-        if self.lanes > 1 {
-            pool.scoped(|sc| {
-                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.execute(move || self.fill_first_slice(bref, h0, l));
-                }
-            });
-        } else {
-            self.fill_first_slice(&mut blocks, h0, 0);
-        }
+        let mut workers = Workers::new(self.lanes);
+
+        workers.map(&mut blocks,
+                    &|bref, lane| self.fill_first_slice(bref, h0, lane));
 
         // finish first pass. slices have to be filled in sync.
-        self.fill_segment(0, 1, &mut blocks, &mut pool);
+        for slice in 1..SLICES_PER_LANE {
+            workers.map(&mut blocks,
+                        &|bref, lane| self.fill_slice(bref, 0, lane, slice, 0));
+        }
         pass_fn(0, &blocks);  // kats
 
         for p in 1..self.passes {
-            self.fill_segment(p, 0, &mut blocks, &mut pool);
+            for slice in 0..SLICES_PER_LANE {
+                workers.map(&mut blocks, &|bref, lane| {
+                    self.fill_slice(bref, p, lane, slice, 0)
+                });
+            }
             pass_fn(p, &blocks);  // kats
         }
 
@@ -245,25 +246,6 @@ impl Argon2 {
     //  - There are always four slices.
     //  - `lanelen * lane = self.kib`.
     //  - Filling is done segment-by-segment.
-    #[inline(always)]
-    fn fill_segment(&self, pass: u32, slice_begin: u32, blocks: &mut Matrix,
-                    pool: &mut scoped_threadpool::Pool) {
-        if self.lanes == 1 {
-            for slice in slice_begin..SLICES_PER_LANE {
-                self.fill_slice(blocks, pass, 0, slice, 0);
-            }
-            return;
-        }
-
-        for slice in slice_begin..SLICES_PER_LANE {
-            pool.scoped(|sc| {
-                for (l, bref) in (0..self.lanes).zip(blocks.lanes_as_mut()) {
-                    sc.execute(move || self.fill_slice(bref, pass, l, slice, 0));
-                }
-            });
-        }
-    }
-
     fn fill_first_slice(&self, blks: &mut Matrix, mut h0: [u8; 72], lane: u32) {
         // fill the first (of four) slice
         h0[68..72].clone_from_slice(&as32le(lane));

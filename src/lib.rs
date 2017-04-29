@@ -4,6 +4,7 @@ mod octword;
 #[macro_use]
 mod block;
 mod argon2;
+mod workers;
 pub mod verifier;
 
 pub use argon2::{Argon2, ParamErr, Variant, argon2d_simple, argon2i_simple,
