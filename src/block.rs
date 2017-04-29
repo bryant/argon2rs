@@ -123,8 +123,13 @@ impl Matrix {
         &mut *(self as *mut Self)
     }
 
-    pub fn col(&self, col: u32) -> Vec<&Block> {
-        self.0.iter().map(|l| &l[col as usize]).collect()
+    // Xors the Blocks of column `col` together.
+    pub fn xor_column(&self, col: u32) -> Block {
+        let mut rv = self.0[0][col as usize].clone();
+        for row in self.0.iter().skip(1) {
+            rv ^= &row[col as usize];
+        }
+        rv
     }
 
     pub fn iter(&self) -> Iter<Vec<Block>> { self.0.iter() }

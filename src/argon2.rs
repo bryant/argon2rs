@@ -33,18 +33,6 @@ fn split_u64(n: u64) -> (u32, u32) {
     ((n & 0xffffffff) as u32, (n >> 32) as u32)
 }
 
-fn xor_all(blocks: &Vec<&Block>) -> Block {
-    if blocks.len() == 0 {
-        block::zero()
-    } else {
-        let mut rv = blocks[0].clone();
-        for &block in blocks.iter().skip(1) {
-            rv ^= block;
-        }
-        rv
-    }
-}
-
 fn as32le(k: u32) -> [u8; 4] { unsafe { mem::transmute(k.to_le()) } }
 
 fn len32(t: &[u8]) -> [u8; 4] { as32le(t.len() as u32) }
@@ -224,7 +212,7 @@ impl Argon2 {
             pass_fn(p, &blocks);  // kats
         }
 
-        h_prime(out, &xor_all(&blocks.col(self.lanelen - 1)).as_u8());
+        h_prime(out, &blocks.xor_column(self.lanelen - 1).as_u8());
     }
 
     // `Matrix` is an array of 1-KiB blocks and organized as follows:
