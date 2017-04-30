@@ -530,6 +530,7 @@ mod tests {
     use std::fs::File;
     use std::io::Read;
     use super::Argon2;
+    use super::{Variant, Version};
     use block;
     use std::fmt::Write;
 
@@ -589,7 +590,7 @@ mod tests {
         (h0output, blockoutput)
     }
 
-    fn compare_kats(fexpected: &str, variant: super::Variant) {
+    fn compare_kats(fexpected: &str, variant: Variant, vers: Version) {
         let mut f = File::open(fexpected).unwrap();
         let mut expected = String::new();
         f.read_to_string(&mut expected).unwrap();
@@ -597,7 +598,7 @@ mod tests {
         let (p, s) = (&[1; TEST_PWDLEN], &[2; TEST_SALTLEN]);
         let (k, x) = (&[3; TEST_SECRETLEN], &[4; TEST_ADLEN]);
         let mut out = [0 as u8; TEST_OUTLEN];
-        let a2 = Argon2::new(3, 4, 32, variant).ok().unwrap();
+        let a2 = Argon2::with_version(3, 4, 32, variant, vers).ok().unwrap();
         let (h0, blocks) = run_and_collect(&a2, &mut out, p, s, k, x);
 
         let mut rv = String::new();
@@ -619,8 +620,14 @@ mod tests {
     }
 
     #[test]
-    fn argon2i_kat() { compare_kats("kats/argon2i", super::Variant::Argon2i); }
+    fn argon2i_kat() {
+        compare_kats("kats/0x10/argon2i", Variant::Argon2i, Version::_0x10);
+        compare_kats("kats/0x13/argon2i", Variant::Argon2i, Version::_0x13);
+    }
 
     #[test]
-    fn argon2d_kat() { compare_kats("kats/argon2d", super::Variant::Argon2d); }
+    fn argon2d_kat() {
+        compare_kats("kats/0x10/argon2d", Variant::Argon2d, Version::_0x10);
+        compare_kats("kats/0x13/argon2d", Variant::Argon2d, Version::_0x13);
+    }
 }
