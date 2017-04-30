@@ -3,7 +3,7 @@
 
 use std::{fmt, str};
 use std::error::Error;
-use argon2::{Argon2, ParamErr, Variant, defaults};
+use argon2::{Argon2, ParamErr, Variant, Version, defaults};
 
 macro_rules! maybe {
     ($e: expr) => {
@@ -141,6 +141,15 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn read_version(&mut self) -> Parsed<Version> {
+        self.read_u32()
+            .and_then(|vers| match vers {
+                          0x10 => Ok(Version::_0x10),
+                          0x13 => Ok(Version::_0x13),
+                          _ => self.err(),
+                      })
+    }
+
     fn decode64_till(&mut self, stopchar: Option<&[u8]>) -> Parsed<Vec<u8>> {
         let end = match stopchar {
             None => self.enc.len(),
@@ -211,7 +220,15 @@ macro_rules! try_unit {
     };
 }
 
-type Packed = (Variant, u32, u32, u32, Vec<u8>, Vec<u8>, Vec<u8>, Vec<u8>);
+type Packed = (Variant,
+               Version,
+               u32,
+               u32,
+               u32,
+               Vec<u8>,
+               Vec<u8>,
+               Vec<u8>,
+               Vec<u8>);
 
 impl Encoded {
     fn parse(encoded: &[u8]) -> Result<Packed, usize> {
@@ -228,7 +245,19 @@ impl Encoded {
             _ => unreachable!(),
         };
 
-        try_unit!(p.expect(b"$m="));
+        try_unit!(p.expect(b"$"));
+        let vers = match p.expect(b"v=") {
+            // Match the c reference impl's behavior, which defaults to a v0x10
+            // hash encoding since the `v=` field was only introduced with
+            // v0x13.
+            Err(_) => Version::_0x10,
+            Ok(()) => {
+                let vers = try!(p.read_version());
+                try_unit!(p.expect(b","));
+                vers
+            }
+        };
+        try_unit!(p.expect(b"m="));
         let kib = try!(p.read_u32());
         try_unit!(p.expect(b",t="));
         let passes = try!(p.read_u32());
@@ -249,15 +278,15 @@ impl Encoded {
         let salt = try!(p.decode64_till(Some(b"$")));
         try_unit!(p.expect(b"$"));
         let hash = try!(p.decode64_till(None));
-        Ok((variant, kib, passes, lanes, key, data, salt, hash))
+        Ok((variant, vers, kib, passes, lanes, key, data, salt, hash))
     }
 
     /// Reconstruct a previous hash session from serialized bytes.
     pub fn from_u8(encoded: &[u8]) -> Result<Self, DecodeError> {
         match Self::parse(encoded) {
             Err(pos) => Err(DecodeError::ParseError(pos)),
-            Ok((v, kib, passes, lanes, key, data, salt, hash)) => {
-                match Argon2::new(passes, lanes, kib, v) {
+            Ok((v, vers, kib, passes, lanes, key, data, salt, hash)) => {
+                match Argon2::with_version(passes, lanes, kib, v, vers) {
                     Err(e) => Err(DecodeError::InvalidParams(e)),
                     Ok(a2) => {
                         Ok(Encoded {
@@ -291,9 +320,10 @@ impl Encoded {
             bytes if bytes.len() > 0 => format!(",data={}", bytes),
             _ => String::new(),
         };
-        let (var, m, t, p) = self.params.params();
-        format!("$argon2{}$m={},t={},p={}{}{}${}${}", vcode(var), m, t, p,
-                k_, x_, b64(&self.salt[..]), b64(&self.hash))
+        let (var, m, t, p, vers) = self.params();
+        format!("$argon2{}$v={},m={},t={},p={}{}{}${}${}", vcode(var),
+                vers as usize, m, t, p, k_, x_, b64(&self.salt[..]),
+                b64(&self.hash))
             .into_bytes()
     }
 
@@ -344,6 +374,11 @@ impl Encoded {
         let s = &self.salt[..];
         self.params.hash(&mut out, p, s, &self.key[..], &self.data[..]);
         constant_eq(&out, &self.hash)
+    }
+
+    /// Provides read-only access to the Argon2 parameters of this hash.
+    pub fn params(&self) -> (Variant, u32, u32, u32, Version) {
+        self.params.params()
     }
 }
 

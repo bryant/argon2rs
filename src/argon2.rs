@@ -305,9 +305,10 @@ impl Argon2 {
         if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
 
-    /// Provides read-only access to `(variant, kibibytes, passes, lanes)`.
-    pub fn params(&self) -> (Variant, u32, u32, u32) {
-        (self.variant, self.kib, self.passes, self.lanes)
+    /// Provides read-only access to `(variant, kibibytes, passes, lanes,
+    /// version)`. The version should always be 0x13.
+    pub fn params(&self) -> (Variant, u32, u32, u32, Version) {
+        (self.variant, self.kib, self.passes, self.lanes, self.version)
     }
 }
 

@@ -47,7 +47,7 @@ fn bench_cargon_threaded(b: &mut test::Bencher) {
 
 fn mk_cargon(a2: Argon2, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8])
              -> cargon::CargonContext {
-    let (_, kib, passes, lanes) = a2.params();
+    let (_, kib, passes, lanes, vers) = a2.params();
     cargon::CargonContext {
         out: out.as_mut_ptr(),
         outlen: out.len() as u32,
@@ -64,7 +64,7 @@ fn mk_cargon(a2: Argon2, out: &mut [u8], p: &[u8], s: &[u8], k: &[u8], x: &[u8])
         m_cost: kib,
         lanes: lanes,
         threads: lanes,
-        version: 0x10,
+        version: vers as u32,
         allocate_fptr: ptr::null(),
         deallocate_fptr: ptr::null(),
         flags: cargon::ARGON2_FLAG_CLEAR_MEMORY,
