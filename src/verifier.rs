@@ -406,9 +406,14 @@ mod test {
          (b"any carnal pleasu", b"YW55IGNhcm5hbCBwbGVhc3U"),
          (b"any carnal pleas", b"YW55IGNhcm5hbCBwbGVhcw")];
 
-    const ENCODED: &'static [u8] =
-        b"$argon2i$m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
-          $Eh1lW3mjkhlMLRQdE7vXZnvwDXSGLBfXa6BGK4a1J3s";
+    const ENCODED: &'static [&'static [u8]] =
+        &[b"$argon2i$m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
+            $Eh1lW3mjkhlMLRQdE7vXZnvwDXSGLBfXa6BGK4a1J3s",
+          // ^ ensures that default version is 0x10.
+          b"$argon2i$v=16,m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
+            $Eh1lW3mjkhlMLRQdE7vXZnvwDXSGLBfXa6BGK4a1J3s",
+          b"$argon2i$v=19,m=4096,t=3,p=1$dG9kbzogZnV6eiB0ZXN0cw\
+            $AvsXI+N78kGHzeGwzz0VTjfBdl7MmgvBGfJ/XXyqLbA"];
 
     #[test]
     fn test_base64_no_pad() {
@@ -426,9 +431,11 @@ mod test {
 
     #[test]
     fn test_verify() {
-        let v = Encoded::from_u8(ENCODED).unwrap();
-        assert_eq!(v.verify(b"argon2i!"), true);
-        assert_eq!(v.verify(b"nope"), false);
+        for &hash_string in ENCODED {
+            let v = Encoded::from_u8(hash_string).unwrap();
+            assert_eq!(v.verify(b"argon2i!"), true);
+            assert_eq!(v.verify(b"nope"), false);
+        }
     }
 
     #[test]
@@ -436,13 +443,17 @@ mod test {
         use super::DecodeError::*;
         use argon2::ParamErr::*;
         let cases: &[(&'static [u8], super::DecodeError)] =
-            &[(b"$argon2y$m=4096", ParseError(7)),
-              (b"$argon2i$m=-2,t=-4,p=-4$aaaaaaaa$ffffff", ParseError(11)),
-              (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(30)),
-              (b"$argon2i$m=0,t=0,p=0$aaaaaaaa$ffffff",
+            &[(b"$argon2y$v=19,m=4096", ParseError(7)),
+              (b"$argon2i$v=19,m=-2,t=-4,p=-4$aaaaaaaa$ffffff", ParseError(16)),
+              // ^ negative m is invalid.
+              (b"$argon2i$v=19,m=0,t=0,p=0$aaaaaaaa$ffffff*", ParseError(35)),
+              // ^ asterisk is invalid base64 char.
+              (b"$argon2i$v=19,m=0,t=0,p=0$aaaaaaaa$ffffff",
                InvalidParams(TooFewPasses)),
-              // intentionally fail Encoded::expect with undersized input
-              (b"$argon2i$m", ParseError(8))];
+              // ^ p = 0 is invalid.
+              (b"$argon2i$m", ParseError(9))];
+              // ^ intentionally fail Encoded::expect with undersized input
+
         for &(case, err) in cases.iter() {
             let v = Encoded::from_u8(case);
             assert!(v.is_err());
