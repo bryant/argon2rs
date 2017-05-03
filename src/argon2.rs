@@ -5,7 +5,6 @@ use std::error::Error;
 use self::blake2_rfc::blake2b::Blake2b;
 use octword::u64x2;
 use block::{ARGON2_BLOCK_BYTES, Block, Matrix};
-use block;
 use workers::Workers;
 
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
