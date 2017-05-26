@@ -25,11 +25,7 @@ fn that_cli_tool(msg: &[u8], salt: &[u8], passes: u32, lanes: u32, logkib: u32)
 }
 
 fn to_string(bs: &[u8]) -> String {
-    let mut rv = String::new();
-    for b in bs.iter() {
-        rv.push_str(&format!("{:02x}", b));
-    }
-    rv
+    bs.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
 fn main() {
