@@ -107,5 +107,8 @@ test result: ok. 0 passed; 0 failed; 0 ignored; 2 measured
 ["Argon2: The Memory-Hard Function for Password Hashing and Other
 Applications"][1]
 
+["Towards Practical Attacks on Argon2i and Balloon Hashing"][3]
+
 [1]: https://github.com/P-H-C/phc-winner-argon2/raw/master/argon2-specs.pdf
 [2]: https://github.com/p-h-c/phc-winner-argon2
+[3]: https://eprint.iacr.org/2016/759.pdf
