@@ -180,7 +180,7 @@ impl Argon2 {
     /// `p`, the byte slice containing, typically, the plaintext (length 0 to
     /// 2^32-1);
     ///
-    /// a salt `s` of length 8 to 2^32-1 bytes;
+    /// a salt `s` of length 8 to 2^32 - 1 bytes;
     ///
     /// `k`, an optional (length 0 to 32 bytes) secret value; and
     ///
@@ -313,7 +313,7 @@ impl Argon2 {
 }
 
 /// Convenience wrapper around Argon2i for the majority of use cases where only
-/// a password and salt are supplied. Note that a salt between 8 and 2^32-1
+/// a password and salt are supplied. Note that a salt between 8 and 2^32 - 1
 /// bytes must be provided.
 pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
@@ -323,7 +323,7 @@ pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
 }
 
 /// Convenience wrapper around Argon2d for the majority of use cases where only
-/// a password and salt are supplied. Note that a salt between 8 and 2^32-1
+/// a password and salt are supplied. Note that a salt between 8 and 2^32 - 1
 /// bytes must be provided.
 pub fn argon2d_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
     let mut out = [0; defaults::LENGTH];
