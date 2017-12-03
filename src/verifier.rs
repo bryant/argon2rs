@@ -121,6 +121,16 @@ impl<'a> Parser<'a> {
         self.err()
     }
 
+    fn read_until(&mut self, stopchar: u8) -> &'a [u8] {
+        let start = self.pos;
+        let stop = |c: &u8| *c == stopchar;
+        self.pos = match self.enc[self.pos..].iter().position(stop) {
+            None => self.enc.len() - 1,
+            Some(end) => self.pos + end,
+        };
+        &self.enc[start..self.pos]
+    }
+
     fn read_u32(&mut self) -> Parsed<u32> {
         let is_digit = |c: u8| 48 <= c && c <= 57;
         let mut end = self.pos;
@@ -239,10 +249,11 @@ impl Encoded {
 
         try_unit!(p.expect(b"$argon2"));
 
-        let variant = match try!(p.one_of(b"di")) {
-            v if v == 'd' as u8 => Variant::Argon2d,
-            v if v == 'i' as u8 => Variant::Argon2i,
-            _ => unreachable!(),
+        let variant = match p.read_until('$' as u8) {
+            b"d" => Variant::Argon2d,
+            b"i" => Variant::Argon2i,
+            b"id" => Variant::Argon2id,
+            x => return Err(p.pos - x.len()),
         };
 
         try_unit!(p.expect(b"$"));
@@ -309,6 +320,7 @@ impl Encoded {
         let vcode = |v| match v {
             Variant::Argon2i => "i",
             Variant::Argon2d => "d",
+            Variant::Argon2id => "id",
         };
         let b64 = |x| String::from_utf8(base64_no_pad(x)).unwrap()
 ;

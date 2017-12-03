@@ -12,6 +12,7 @@ use workers::Workers;
 pub enum Variant {
     Argon2d = 0,
     Argon2i = 1,
+    Argon2id = 2,
 }
 
 const DEF_B2HASH_LEN: usize = 64;
@@ -267,15 +268,24 @@ impl Argon2 {
     fn fill_slice(&self, blks: &mut Matrix, pass: u32, lane: u32, slice: u32,
                   offset: u32) {
         let mut jgen = Gen2i::new(offset as usize, pass, lane, slice,
-                                  self.lanes * self.lanelen, self.passes);
+                                  self.lanes * self.lanelen, self.passes,
+                                  self.variant);
         let slicelen = self.lanelen / SLICES_PER_LANE;
 
+        use Variant::*;
+
         for idx in offset..slicelen {
-            let (j1, j2) = if self.variant == Variant::Argon2i {
-                jgen.nextj()
-            } else {
-                let col = self.prev(slice * slicelen + idx);
-                split_u64((blks[(lane, col)])[0].0)
+            let (j1, j2) = match self.variant {
+                Argon2i => jgen.nextj(),
+                Argon2d => {
+                    let col = self.prev(slice * slicelen + idx);
+                    split_u64((blks[(lane, col)])[0].0)
+                },
+                Argon2id if pass == 0 && slice < 2 => jgen.nextj(),
+                Argon2id => {
+                    let col = self.prev(slice * slicelen + idx);
+                    split_u64((blks[(lane, col)])[0].0)
+                },
             };
             self.fill_block(blks, pass, lane, slice, idx, j1, j2);
         }
@@ -382,13 +392,13 @@ struct Gen2i {
 impl Gen2i {
     #[cfg_attr(rustfmt, rustfmt_skip)]
     fn new(start_at: usize, pass: u32, lane: u32, slice: u32, totblocks: u32,
-           totpasses: u32)
+           totpasses: u32, variant: Variant)
            -> Gen2i {
         use block::zero;
 
         let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
         let args = [(pass, lane), (slice, totblocks),
-                    (totpasses, Variant::Argon2i as u32)];
+                    (totpasses, variant as u32)];
         for (k, &(lo, hi)) in rv.arg.iter_mut().zip(args.into_iter()) {
             *k = u64x2(lo as u64, hi as u64);
         }
@@ -632,5 +642,11 @@ mod tests {
     fn argon2d_kat() {
         compare_kats("kats/0x10/argon2d", Variant::Argon2d, Version::_0x10);
         compare_kats("kats/0x13/argon2d", Variant::Argon2d, Version::_0x13);
+    }
+
+    #[test]
+    fn argon2id_kat() {
+        compare_kats("kats/0x10/argon2id", Variant::Argon2id, Version::_0x10);
+        compare_kats("kats/0x13/argon2id", Variant::Argon2id, Version::_0x13);
     }
 }
