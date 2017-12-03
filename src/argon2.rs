@@ -14,7 +14,6 @@ pub enum Variant {
     Argon2i = 1,
 }
 
-const ARGON2_VERSION: u32 = 0x10;
 const DEF_B2HASH_LEN: usize = 64;
 const SLICES_PER_LANE: u32 = 4;
 
@@ -77,6 +76,13 @@ pub struct Argon2 {
     lanelen: u32,
     kib: u32,
     variant: Variant,
+    version: Version,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum Version {
+    _0x10 = 0x10,
+    _0x13 = 0x13,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -139,6 +145,14 @@ impl Argon2 {
     /// `variant`: Set this to `Variant::Argon2i` when hashing passwords.
     pub fn new(passes: u32, lanes: u32, kib: u32, variant: Variant)
                -> Result<Argon2, ParamErr> {
+        Argon2::with_version(passes, lanes, kib, variant, Version::_0x13)
+    }
+
+    // This entry point exists to allow the verifier to verify hash encodings
+    // that were generated with legacy versions of Argon2.
+    pub(crate) fn with_version(passes: u32, lanes: u32, kib: u32,
+                               variant: Variant, version: Version)
+                               -> Result<Argon2, ParamErr> {
         if passes < 1 {
             Result::Err(ParamErr::TooFewPasses)
         } else if lanes < 1 {
@@ -154,6 +168,7 @@ impl Argon2 {
                 lanelen: kib / (4 * lanes) * 4,
                 kib: kib,
                 variant: variant,
+                version: version,
             })
         }
     }
@@ -188,7 +203,7 @@ impl Argon2 {
 
         let mut blocks = Matrix::new(self.lanes, self.lanelen);
         let h0 = h0(self.lanes, out.len() as u32, self.kib, self.passes,
-                    ARGON2_VERSION, self.variant, p, s, k, x);
+                    self.version as u32, self.variant, p, s, k, x);
         h0_fn(&h0);  // kats
 
         let mut workers = Workers::new(self.lanes);
@@ -280,16 +295,20 @@ impl Argon2 {
         let cur = (lane, slice * slicelen + idx);
         let pre = (lane, self.prev(cur.1));
         let (wr, rd, refblk) = blks.get3(cur, pre, zth);
-        g(wr, rd, refblk);
+        match self.version {
+            Version::_0x10 => g(wr, rd, refblk),
+            Version::_0x13 => g_xor(wr, rd, refblk),
+        }
     }
 
     fn prev(&self, n: u32) -> u32 {
         if n > 0 { n - 1 } else { self.lanelen - 1 }
     }
 
-    /// Provides read-only access to `(variant, kibibytes, passes, lanes)`.
-    pub fn params(&self) -> (Variant, u32, u32, u32) {
-        (self.variant, self.kib, self.passes, self.lanes)
+    /// Provides read-only access to `(variant, kibibytes, passes, lanes,
+    /// version)`. The version should always be 0x13.
+    pub fn params(&self) -> (Variant, u32, u32, u32, Version) {
+        (self.variant, self.kib, self.passes, self.lanes, self.version)
     }
 }
 
@@ -409,6 +428,27 @@ fn g(dest: &mut Block, lhs: &Block, rhs: &Block) {
     *dest ^= (lhs, rhs);
 }
 
+// Identical to `g`, except that instead of overwriting the old block with the
+// new one, they are xor-ed together.
+fn g_xor(dest: &mut Block, lhs: &Block, rhs: &Block) {
+    let mut tmp: Block = unsafe { mem::uninitialized() };
+    let lr = lhs.iter().zip(rhs.iter());
+    for ((d, t), (l, r)) in dest.iter_mut().zip(tmp.iter_mut()).zip(lr) {
+        *t = *l ^ *r;
+        *d = *d ^ *t;
+    }
+
+    for row in 0..8 {
+        p_row(row, &mut tmp);
+    }
+    // column-wise, 2x u64 groups
+    for col in 0..8 {
+        p_col(col, &mut tmp);
+    }
+
+    *dest ^= &tmp;
+}
+
 /// ``` g2 y = let g' y = g 0 y in g' . g' ```
 /// Used for data-independent index generation.
 fn g_two(dest: &mut Block, src: &Block) {
@@ -491,6 +531,7 @@ mod tests {
     use std::fs::File;
     use std::io::Read;
     use super::Argon2;
+    use super::{Variant, Version};
     use block;
     use std::fmt::Write;
 
@@ -550,7 +591,7 @@ mod tests {
         (h0output, blockoutput)
     }
 
-    fn compare_kats(fexpected: &str, variant: super::Variant) {
+    fn compare_kats(fexpected: &str, variant: Variant, vers: Version) {
         let mut f = File::open(fexpected).unwrap();
         let mut expected = String::new();
         f.read_to_string(&mut expected).unwrap();
@@ -558,11 +599,13 @@ mod tests {
         let (p, s) = (&[1; TEST_PWDLEN], &[2; TEST_SALTLEN]);
         let (k, x) = (&[3; TEST_SECRETLEN], &[4; TEST_ADLEN]);
         let mut out = [0 as u8; TEST_OUTLEN];
-        let a2 = Argon2::new(3, 4, 32, variant).ok().unwrap();
+        let a2 = Argon2::with_version(3, 4, 32, variant, vers).ok().unwrap();
         let (h0, blocks) = run_and_collect(&a2, &mut out, p, s, k, x);
 
         let mut rv = String::new();
-        wl!(rv, "======================================={:?}", a2.variant);
+        wl!(rv, "=======================================");
+        wl!(rv, "{:?} version number {}", a2.variant, a2.version as usize);
+        wl!(rv, "=======================================");
         w!(rv, "Memory: {} KiB, Iterations: {}, ", a2.kib, a2.passes);
         w!(rv, "Parallelism: {} lanes, ", a2.lanes);
         wl!(rv, "Tag length: {} bytes", out.len());
@@ -580,8 +623,14 @@ mod tests {
     }
 
     #[test]
-    fn argon2i_kat() { compare_kats("kats/argon2i", super::Variant::Argon2i); }
+    fn argon2i_kat() {
+        compare_kats("kats/0x10/argon2i", Variant::Argon2i, Version::_0x10);
+        compare_kats("kats/0x13/argon2i", Variant::Argon2i, Version::_0x13);
+    }
 
     #[test]
-    fn argon2d_kat() { compare_kats("kats/argon2d", super::Variant::Argon2d); }
+    fn argon2d_kat() {
+        compare_kats("kats/0x10/argon2d", Variant::Argon2d, Version::_0x10);
+        compare_kats("kats/0x13/argon2d", Variant::Argon2d, Version::_0x13);
+    }
 }
