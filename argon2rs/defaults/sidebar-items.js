@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["KIB",""],["LANES",""],["LENGTH",""],["PASSES",""]]});
+initSidebarItems({"constant":[["KIB",""],["LANES","Default level of parallelism."],["LENGTH","The size of Argon2's hash output is adjustable. This is the default length."],["PASSES",""]]});

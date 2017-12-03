@@ -9,14 +9,15 @@
 
     <title>lib.rs.html -- source</title>
 
-    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
-    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    <link rel="stylesheet" type="text/css" href="../../normalize.css">
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
     
 
     
     
 </head>
-<body class="rustdoc">
+<body class="rustdoc source">
     <!--[if lte IE 8]>
     <div class="warning">
         This old browser is unsupported and will most likely display funky
@@ -42,7 +43,7 @@
         </form>
     </nav>
 
-    <section id='main' class="content source"><pre class="line-numbers"><span id="1"> 1</span>
+    <section id='main' class="content"><pre class="line-numbers"><span id="1"> 1</span>
 <span id="2"> 2</span>
 <span id="3"> 3</span>
 <span id="4"> 4</span>
@@ -52,17 +53,19 @@
 <span id="8"> 8</span>
 <span id="9"> 9</span>
 <span id="10">10</span>
-</pre><pre class='rust '>
-<span class='attribute'>#<span class='op'>!</span>[<span class='ident'>cfg_attr</span>(<span class='ident'>feature</span> <span class='op'>=</span> <span class='string'>&quot;simd&quot;</span>, <span class='ident'>feature</span>(<span class='ident'>repr_simd</span>, <span class='ident'>platform_intrinsics</span>))]</span>
+<span id="11">11</span>
+</pre><pre class="rust ">
+<span class="attribute">#<span class="op">!</span>[<span class="ident">cfg_attr</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;simd&quot;</span>, <span class="ident">feature</span>(<span class="ident">repr_simd</span>, <span class="ident">platform_intrinsics</span>))]</span>
 
-<span class='kw'>mod</span> <span class='ident'>octword</span>;
-<span class='attribute'>#[<span class='ident'>macro_use</span>]</span>
-<span class='kw'>mod</span> <span class='ident'>block</span>;
-<span class='kw'>mod</span> <span class='ident'>argon2</span>;
-<span class='kw'>pub</span> <span class='kw'>mod</span> <span class='ident'>verifier</span>;
+<span class="kw">mod</span> <span class="ident">octword</span>;
+<span class="attribute">#[<span class="ident">macro_use</span>]</span>
+<span class="kw">mod</span> <span class="ident">block</span>;
+<span class="kw">mod</span> <span class="ident">argon2</span>;
+<span class="kw">mod</span> <span class="ident">workers</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">verifier</span>;
 
-<span class='kw'>pub</span> <span class='kw'>use</span> <span class='ident'>argon2</span>::{<span class='ident'>Argon2</span>, <span class='ident'>ParamErr</span>, <span class='ident'>Variant</span>, <span class='ident'>argon2d_simple</span>, <span class='ident'>argon2i_simple</span>,
-                 <span class='ident'>defaults</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">argon2</span>::{<span class="ident">Argon2</span>, <span class="ident">ParamErr</span>, <span class="ident">Variant</span>, <span class="ident">argon2d_simple</span>, <span class="ident">argon2i_simple</span>,
+                 <span class="ident">defaults</span>};
 </pre>
 </section>
     <section id='search' class="content hidden"></section>
@@ -118,13 +121,10 @@
     
 
     <script>
-        window.rootPath = "../../../";
+        window.rootPath = "../../";
         window.currentCrate = "argon2rs";
-        window.playgroundUrl = "";
     </script>
-    <script src="../../../jquery.js"></script>
-    <script src="../../../main.js"></script>
-    
-    <script defer src="../../../search-index.js"></script>
+    <script src="../../main.js"></script>
+    <script defer src="../../search-index.js"></script>
 </body>
 </html>
