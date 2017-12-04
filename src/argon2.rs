@@ -355,10 +355,22 @@ fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
                slicelen: u32, j1: u32, j2: u32)
                -> u32 {
     let lanelen = slicelen * SLICES_PER_LANE;
+    // All quotes below taken from Section 3.3 ("Indexing") of the Argon2 spec.
     let r: u32 = match (pass, slice, j2 % lanes == lane) {
+        // "If we work with the first slice and the first pass, then l is the
+        // current lane."
         (0, 0, _) => sliceidx - 1,
+
+        // "If l is not the current lane, then R includes all blocks in the last
+        // S − 1 = 3 segments computed and finished in lane l. If B[i][j] is the
+        // first block of a segment, then the very last block from R is
+        // excluded."
         (0, _, false) => slice * slicelen - if sliceidx == 0 { 1 } else { 0 },
+
+        // "If l is the current lane, then R includes all blocks computed in
+        // this lane, that are not overwritten yet, excluding B[i][j − 1]."
         (0, _, true) => slice * slicelen + sliceidx - 1,
+
         (_, _, false) => lanelen - slicelen - if sliceidx == 0 { 1 } else { 0 },
         (_, _, true) => lanelen - slicelen + sliceidx - 1,
     };
