@@ -354,7 +354,7 @@ fn h_prime(out: &mut [u8], input: &[u8]) {
 fn index_alpha(pass: u32, lane: u32, slice: u32, lanes: u32, sliceidx: u32,
                slicelen: u32, j1: u32, j2: u32)
                -> u32 {
-    let lanelen = slicelen * 4;
+    let lanelen = slicelen * SLICES_PER_LANE;
     let r: u32 = match (pass, slice, j2 % lanes == lane) {
         (0, 0, _) => sliceidx - 1,
         (0, _, false) => slice * slicelen - if sliceidx == 0 { 1 } else { 0 },
