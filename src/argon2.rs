@@ -314,20 +314,24 @@ impl Argon2 {
 /// Convenience wrapper around Argon2i for the majority of use cases where only
 /// a password and salt are supplied. Note that a salt between 8 and 2^32 - 1
 /// bytes must be provided.
-pub fn argon2i_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
+pub fn argon2i_simple<P, S>(password: &P, salt: &S) -> [u8; defaults::LENGTH]
+    where P: AsRef<[u8]> + ?Sized, S: AsRef<[u8]> + ?Sized
+{
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2i);
-    a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
+    a2.hash(&mut out, password.as_ref(), salt.as_ref(), &[], &[]);
     out
 }
 
 /// Convenience wrapper around Argon2d for the majority of use cases where only
 /// a password and salt are supplied. Note that a salt between 8 and 2^32 - 1
 /// bytes must be provided.
-pub fn argon2d_simple(password: &str, salt: &str) -> [u8; defaults::LENGTH] {
+pub fn argon2d_simple<P, S>(password: &P, salt: &S) -> [u8; defaults::LENGTH]
+    where P: AsRef<[u8]> + ?Sized, S: AsRef<[u8]> + ?Sized
+{
     let mut out = [0; defaults::LENGTH];
     let a2 = Argon2::default(Variant::Argon2d);
-    a2.hash(&mut out, password.as_bytes(), salt.as_bytes(), &[], &[]);
+    a2.hash(&mut out, password.as_ref(), salt.as_ref(), &[], &[]);
     out
 }
 
