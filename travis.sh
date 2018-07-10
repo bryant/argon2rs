@@ -1,3 +1,5 @@
+#!/bin/sh
+set -e
 cargo build
 cargo test
 
