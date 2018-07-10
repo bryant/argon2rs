@@ -203,6 +203,7 @@ impl Error for DecodeError {
 
 /// Represents a single Argon2 hashing session. A hash session comprises of the
 /// hash algorithm parameters, salt, key, and data used to hash a given input.
+#[derive(Debug, Eq, PartialEq)]
 pub struct Encoded {
     params: Argon2,
     hash: Vec<u8>,
