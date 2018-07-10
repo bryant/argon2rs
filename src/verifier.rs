@@ -440,6 +440,16 @@ mod test {
     }
 
     #[test]
+    fn encode_decode() {
+        for &(s, _) in BASE64_CASES.iter() {
+            let salt = b"Yum!  Extra salty";
+            let key  = b"ff5dfa4d7a048f9db4ad0caad82e75c";
+            let enc = Encoded::default2i(s, salt, key, &[]);
+            assert_eq!(Encoded::from_u8(&enc.to_u8()), Ok(enc));
+        }
+    }
+
+    #[test]
     fn bad_encoded() {
         use super::DecodeError::*;
         use argon2::ParamErr::*;
