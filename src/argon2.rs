@@ -69,6 +69,7 @@ fn h0(lanes: u32, hash_length: u32, memory_kib: u32, passes: u32, version: u32,
 
 /// Main entry point for running Argon2 on customized parameters (cf. note for
 /// `Argon2::new`).
+#[derive(Debug, Eq, PartialEq)]
 pub struct Argon2 {
     passes: u32,
     lanes: u32,

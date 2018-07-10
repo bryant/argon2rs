@@ -203,6 +203,7 @@ impl Error for DecodeError {
 
 /// Represents a single Argon2 hashing session. A hash session comprises of the
 /// hash algorithm parameters, salt, key, and data used to hash a given input.
+#[derive(Debug, Eq, PartialEq)]
 pub struct Encoded {
     params: Argon2,
     hash: Vec<u8>,
@@ -435,6 +436,16 @@ mod test {
             let v = Encoded::from_u8(hash_string).unwrap();
             assert_eq!(v.verify(b"argon2i!"), true);
             assert_eq!(v.verify(b"nope"), false);
+        }
+    }
+
+    #[test]
+    fn encode_decode() {
+        for &(s, _) in BASE64_CASES.iter() {
+            let salt = b"Yum!  Extra salty";
+            let key  = b"ff5dfa4d7a048f9db4ad0caad82e75c";
+            let enc = Encoded::default2i(s, salt, key, &[]);
+            assert_eq!(Encoded::from_u8(&enc.to_u8()), Ok(enc));
         }
     }
 
