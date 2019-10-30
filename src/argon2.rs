@@ -400,7 +400,7 @@ impl Gen2i {
         let mut rv = Gen2i { arg: zero(), pseudos: zero(), idx: start_at };
         let args = [(pass, lane), (slice, totblocks),
                     (totpasses, Variant::Argon2i as u32)];
-        for (k, &(lo, hi)) in rv.arg.iter_mut().zip(args.into_iter()) {
+        for (k, &(lo, hi)) in rv.arg.iter_mut().zip(args.iter()) {
             *k = u64x2(lo as u64, hi as u64);
         }
         rv.more();
